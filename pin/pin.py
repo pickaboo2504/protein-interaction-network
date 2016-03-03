@@ -8,11 +8,10 @@ from scipy.spatial.distance import pdist, squareform
 # A list of backbone chain atoms
 BACKBONE_ATOMS = ['N', 'CA', 'C', 'O']
 
+
 class ProteinInteractionNetwork(object):
     """
     The ProteinInteractionNetwork object.
-
-    This object is a wrapper around 
     """
     def __init__(self, pdb_handle):
         super(ProteinInteractionNetwork, self).__init__()
@@ -24,7 +23,7 @@ class ProteinInteractionNetwork(object):
 
     def compute_interaction_graph(self):
         """
-        Computes the interaction graph in an automated fashion. 
+        Computes the interaction graph in an automated fashion.
 
         Graph definition and metadata:
         ==============================
@@ -32,22 +31,21 @@ class ProteinInteractionNetwork(object):
             - aa: amino acid identity
 
         - Edge: Any interaction found by the atomic interaction network.
-            - hbond:            BOOLEAN 
-            - disulfide:        BOOLEAN 
-            - hydrophobic:      BOOLEAN 
-            - ionic:            BOOLEAN 
-            - aromatic:         BOOLEAN 
+            - hbond:            BOOLEAN
+            - disulfide:        BOOLEAN
+            - hydrophobic:      BOOLEAN
+            - ionic:            BOOLEAN
+            - aromatic:         BOOLEAN
             - aromatic_sulphur: BOOLEAN
-            - cation_pi:        BOOLEAN 
+            - cation_pi:        BOOLEAN
         """
-        # Populate nodes, which are amino acid positions, and have metadata 
-        nums_and_names = set(zip(self.dataframe['resi_num'], 
-                                 self.dataframe['resi_name'])
-                            )
+        # Populate nodes, which are amino acid positions, and have metadata
+        nums_and_names = set(zip(self.dataframe['resi_num'],
+                                 self.dataframe['resi_name']))
         for num, name in nums_and_names:
             self.masterG.add_node(num, aa=name)
 
-        # Add in edges for amino acids that are adjacent in the linear amino 
+        # Add in edges for amino acids that are adjacent in the linear amino
         # acid sequence.
         max_node = max([n for n in self.masterG.nodes()])
         for n, d in self.masterG.nodes(data=True):
@@ -74,7 +72,6 @@ class ProteinInteractionNetwork(object):
                 else:
                     self.masterG.edge[r1][r2][k] = True
 
-
     def parse_pdb(self):
         """
         Parses the PDB file as a pandas DataFrame object.
@@ -87,7 +84,7 @@ class ProteinInteractionNetwork(object):
             for line in f.readlines():
                 data = dict()
                 if line[0:4] == 'ATOM':
-                    
+
                     data['Record name'] = line[0:5].strip(' ')
                     data['serial_number'] = int(line[6:11].strip(' '))
                     data['atom'] = line[12:15].strip(' ')
@@ -106,15 +103,15 @@ class ProteinInteractionNetwork(object):
         """
         Computes the pairwise euclidean distances between every atom.
 
-        Design choice: passed in a DataFrame to enable easier testing on 
-        dummy data. 
+        Design choice: passed in a DataFrame to enable easier testing on
+        dummy data.
         """
 
-        euclidean_distances = pdist(dataframe[['x', 'y', 'z']], \
-            metric='euclidean')
+        euclidean_distances = pdist(dataframe[['x', 'y', 'z']],
+                                    metric='euclidean')
 
         return squareform(euclidean_distances)
-        
+
     def get_interacting_atoms(self, angstroms, distmat):
         """
         Finds the atoms that are within a particular radius of one another.
@@ -123,10 +120,10 @@ class ProteinInteractionNetwork(object):
 
     def get_interacting_resis(self, interacting_atoms, dataframe):
         """
-        Returns a list of 2-tuples indicating the interacting 
+        Returns a list of 2-tuples indicating the interacting
         residues based on the interacting atoms.
 
-        Also filters out the list such that the residues have to be at least 
+        Also filters out the list such that the residues have to be at least
         two apart.
         """
         resi1 = dataframe.ix[interacting_atoms[0]]['resi_num'].values
@@ -140,24 +137,23 @@ class ProteinInteractionNetwork(object):
 
         return filtered_interacting_resis
 
-
     def get_rgroup_dataframe(self):
         """
-        Returns just the atoms that are amongst the R-groups and not part of 
+        Returns just the atoms that are amongst the R-groups and not part of
         the backbone chain.
         """
 
         rgroup_df = self.filter_dataframe(self.dataframe,
                                           'atom',
-                                          BACKBONE_ATOMS, 
+                                          BACKBONE_ATOMS,
                                           False)
         return rgroup_df
 
     def filter_dataframe(self, dataframe, by_column, list_of_values, boolean):
         """
         Filters the [dataframe] such that the [by_column] values have to be
-        in the [list_of_values] list, if boolean == True, or not in the list 
-        if boolean == False 
+        in the [list_of_values] list, if boolean == True, or not in the list
+        if boolean == False
         """
         df = dataframe.copy()
         df = df[df[by_column].isin(list_of_values) == boolean]
@@ -165,7 +161,7 @@ class ProteinInteractionNetwork(object):
 
         return df
 
-    ##### SPECIFIC INTERACTION FUNCTIONS #####
+    # SPECIFIC INTERACTION FUNCTIONS #
     def get_hydrophobic_interactions(self):
         """
         Finds all hydrophobic interactions between the following residues:
@@ -176,85 +172,102 @@ class ProteinInteractionNetwork(object):
         HYDROPHOBIC_RESIS = ['ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE',
                              'TRP', 'PRO', 'TYR']
 
-        hydrophobics_df = self.filter_dataframe(self.rgroup_df, 'resi_name', \
-                                HYDROPHOBIC_RESIS, True)
+        hydrophobics_df = self.filter_dataframe(self.rgroup_df,
+                                                'resi_name',
+                                                HYDROPHOBIC_RESIS,
+                                                True)
         distmat = self.compute_distmat(hydrophobics_df)
         interacting_atoms = self.get_interacting_atoms(5, distmat)
-        interacting_resis = self.get_interacting_resis(interacting_atoms, \
-                                    hydrophobics_df)
+        interacting_resis = self.get_interacting_resis(interacting_atoms,
+                                                       hydrophobics_df)
 
         return interacting_resis
 
     def get_disulfide_interactions(self):
         """
-        Finds all disulfide interactions between CYS residues, such that the 
+        Finds all disulfide interactions between CYS residues, such that the
         sulfur atom pairs are within 2.2A of each other.
         """
         DISULFIDE_RESIS = ['CYS']
         DISULFIDE_ATOMS = ['SG']
 
-        disulfide_df = self.filter_dataframe(self.rgroup_df, 'resi_name', DISULFIDE_RESIS, True)
-        disulfide_df = self.filter_dataframe(disulfide_df, 'atom', DISULFIDE_ATOMS, True)
+        disulfide_df = self.filter_dataframe(self.rgroup_df,
+                                             'resi_name',
+                                             DISULFIDE_RESIS,
+                                             True)
+        disulfide_df = self.filter_dataframe(disulfide_df,
+                                             'atom',
+                                             DISULFIDE_ATOMS,
+                                             True)
         distmat = self.compute_distmat(disulfide_df)
         interacting_atoms = self.get_interacting_atoms(2.2, distmat)
-        interacting_resis = self.get_interacting_resis(interacting_atoms, disulfide_df)
+        interacting_resis = self.get_interacting_resis(interacting_atoms,
+                                                       disulfide_df)
 
         return interacting_resis
 
-
     def get_hydrogen_bond_interactions(self):
         """
-        Finds all hydrogen-bond interactions between atoms capable of hydrogen 
+        Finds all hydrogen-bond interactions between atoms capable of hydrogen
         bonding.
         """
 
         def get_interacting_residues(HBOND_ATOMS, distance):
-            hbond_df = self.filter_dataframe(self.rgroup_df, 'atom', HBOND_ATOMS, True)
+            hbond_df = self.filter_dataframe(self.rgroup_df,
+                                             'atom',
+                                             HBOND_ATOMS,
+                                             True)
             distmat = self.compute_distmat(hbond_df)
-            # Find the interacting atoms for those that are within 3.5A of one 
+            # Find the interacting atoms for those that are within 3.5A of one
             # another.
             interacting_atoms = self.get_interacting_atoms(distance, distmat)
-            interacting_resis = self.get_interacting_resis(interacting_atoms, hbond_df)
+            interacting_resis = self.get_interacting_resis(interacting_atoms,
+                                                           hbond_df)
             return interacting_resis
         # Double-check that this is true for all atoms
-        HBOND_ATOMS = ['ND', 'NE', 'NH', 'NZ', 'OD', 'OE', 'OG', 'OH', 'SD', 'SG', 'N', 'O']
+        HBOND_ATOMS = ['ND', 'NE', 'NH', 'NZ', 'OD', 'OE', 'OG', 'OH', 'SD',
+                       'SG', 'N', 'O']
         interacting_resis = get_interacting_residues(HBOND_ATOMS, 3.5)
 
-        # The 3.5A criteria fits for all interactions involving the 
+        # The 3.5A criteria fits for all interactions involving the
         # HBOND_ATOMS above.
-        # Now, just filter for those with SD and SG, to look for 4A 
+        # Now, just filter for those with SD and SG, to look for 4A
         # interactions.
         HBOND_ATOMS_SULPHUR = ['SD', 'SG']
-        interacting_resis = interacting_resis.union(get_interacting_residues(HBOND_ATOMS_SULPHUR, 4.0))
+        interacting_resis = interacting_resis.union(
+            get_interacting_residues(HBOND_ATOMS_SULPHUR, 4.0))
         return interacting_resis
-
 
     def get_ionic_interactions(self):
         """
-        Finds all ionic interactiosn between ARG, LYS, HIS, ASP, and GLU. 
+        Finds all ionic interactiosn between ARG, LYS, HIS, ASP, and GLU.
         Distance cutoff: 6A.
         """
 
         IONIC_RESIS = ['ARG', 'LYS', 'HIS', 'ASP', 'GLU']
 
-        ionic_df = self.filter_dataframe(self.rgroup_df, 'resi_name', IONIC_RESIS, True)
+        ionic_df = self.filter_dataframe(self.rgroup_df,
+                                         'resi_name',
+                                         IONIC_RESIS,
+                                         True)
         distmat = self.compute_distmat(ionic_df)
         interacting_atoms = self.get_interacting_atoms(6, distmat)
-        interacting_resis = self.get_interacting_resis(interacting_atoms, ionic_df)
+        interacting_resis = self.get_interacting_resis(interacting_atoms,
+                                                       ionic_df)
         return interacting_resis
 
     def get_aromatic_interactions(self):
         """
-        Finds all aromatic-aromatic interactions by looking for phenyl ring 
-        centroids separated between 4.5A to 7A. 
+        Finds all aromatic-aromatic interactions by looking for phenyl ring
+        centroids separated between 4.5A to 7A.
 
-        Phenyl rings are present on PHE, TRP, HIS and TYR. 
+        Phenyl rings are present on PHE, TRP, HIS and TYR.
 
-        Phenyl ring atoms on these amino acids are defined by the following 
+        Phenyl ring atoms on these amino acids are defined by the following
         atoms:
         - PHE: CG, CD, CE, CZ
         - TRP: CD, CE, CH, CZ
-        - HIS: CG, CD, ND, NE, CE 
+        - HIS: CG, CD, ND, NE, CE
         - TYR: CG, CD, CE, CZ
 
         Centroids of these atoms are taken by taking:
@@ -274,7 +287,8 @@ class ProteinInteractionNetwork(object):
 
         distmat = self.compute_distmat(aromatic_df)
         interacting_atoms = np.where([(distmat >= 4.5) & (distmat <= 7)])
-        interacting_resis = self.get_interacting_resis(interacting_atoms, aromatic_df)
+        interacting_resis = self.get_interacting_resis(interacting_atoms,
+                                                       aromatic_df)
 
         return interacting_resis
 
@@ -290,10 +304,10 @@ class ProteinInteractionNetwork(object):
 
         Returns:
         ========
-        - dataframe: a filtered dataframe containing just those atoms from the 
-                     particular amino acid selected. e.g. equivalent to 
-                     selecting just the ring atoms from a particular amino 
-                     acid. 
+        - dataframe: a filtered dataframe containing just those atoms from the
+                     particular amino acid selected. e.g. equivalent to
+                     selecting just the ring atoms from a particular amino
+                     acid.
         """
 
         AA_RING_ATOMS = dict()
@@ -302,17 +316,23 @@ class ProteinInteractionNetwork(object):
         AA_RING_ATOMS['HIS'] = ['CG', 'CD', 'CE', 'ND', 'NE']
         AA_RING_ATOMS['TYR'] = ['CG', 'CD', 'CE', 'CZ']
 
-        ring_atom_df = self.filter_dataframe(dataframe, 'resi_name', [aa], True)
-        ring_atom_df = self.filter_dataframe(ring_atom_df, 'atom', AA_RING_ATOMS[aa], True)
+        ring_atom_df = self.filter_dataframe(dataframe,
+                                             'resi_name',
+                                             [aa],
+                                             True)
+        ring_atom_df = self.filter_dataframe(ring_atom_df,
+                                             'atom',
+                                             AA_RING_ATOMS[aa],
+                                             True)
 
         return ring_atom_df
 
     def get_ring_centroids(self, ring_atom_df, aa):
         """
-        Computes the ring centroids for each a particular amino acid's ring 
+        Computes the ring centroids for each a particular amino acid's ring
         atoms.
 
-        Ring centroids are computed by taking the mean of the x, y, and z 
+        Ring centroids are computed by taking the mean of the x, y, and z
         coordinates.
 
         Parameters:
@@ -322,10 +342,12 @@ class ProteinInteractionNetwork(object):
 
         Returns:
         ========
-        - centroid_df: a dataframe containing just the centroid coordinates of 
+        - centroid_df: a dataframe containing just the centroid coordinates of
                        the ring atoms of each residue.
         """
-        centroid_df = ring_atom_df.groupby('resi_num').mean()[['x','y','z']].reset_index()
+        centroid_df = ring_atom_df.groupby('resi_num')\
+                                  .mean()[['x', 'y', 'z']]\
+                                  .reset_index()
         centroid_df['resi_name'] = aa
 
         return centroid_df
@@ -336,7 +358,10 @@ class ProteinInteractionNetwork(object):
         SULPHUR_RESIS = ['MET', 'CYS']
         AROMATIC_RESIS = ['PHE', 'TYR', 'TRP']
 
-        aromatic_sulphur_df = self.filter_dataframe(self.rgroup_df, 'resi_name', RESIDUES, True)
+        aromatic_sulphur_df = self.filter_dataframe(self.rgroup_df,
+                                                    'resi_name',
+                                                    RESIDUES,
+                                                    True)
         distmat = self.compute_distmat(aromatic_sulphur_df)
         interacting_atoms = self.get_interacting_atoms(5.3, distmat)
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
@@ -348,12 +373,12 @@ class ProteinInteractionNetwork(object):
             resi1_num = aromatic_sulphur_df.ix[a1]['resi_num']
             resi2_num = aromatic_sulphur_df.ix[a2]['resi_num']
 
-            if ((resi1 in SULPHUR_RESIS and resi2 in AROMATIC_RESIS) or \
-                (resi1 in AROMATIC_RESIS and resi2 in SULPHUR_RESIS)) and \
-                resi1_num != resi2_num and \
-                abs(resi2_num - resi1_num) >= 2 and \
-                (resi2_num, resi1_num) not in interacting_resis:
-                interacting_resis.add((resi1_num, resi2_num))
+            if ((resi1 in SULPHUR_RESIS and resi2 in AROMATIC_RESIS) or
+                    (resi1 in AROMATIC_RESIS and resi2 in SULPHUR_RESIS)) and \
+                    resi1_num != resi2_num and \
+                    abs(resi2_num - resi1_num) >= 2 and \
+                    (resi2_num, resi1_num) not in interacting_resis:
+                    interacting_resis.add((resi1_num, resi2_num))
 
         return interacting_resis
 
@@ -362,7 +387,8 @@ class ProteinInteractionNetwork(object):
         CATION_RESIS = ['LYS', 'ARG']
         PI_RESIS = ['PHE', 'TYR', 'TRP']
 
-        cation_pi_df = self.filter_dataframe(self.rgroup_df, 'resi_name', RESIDUES, True)
+        cation_pi_df = self.filter_dataframe(self.rgroup_df,
+                                             'resi_name', RESIDUES, True)
         distmat = self.compute_distmat(cation_pi_df)
         interacting_atoms = self.get_interacting_atoms(6, distmat)
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
@@ -375,15 +401,11 @@ class ProteinInteractionNetwork(object):
             resi1_num = cation_pi_df.ix[a1]['resi_num']
             resi2_num = cation_pi_df.ix[a2]['resi_num']
 
-            if ((resi1 in CATION_RESIS and resi2 in PI_RESIS) or \
-                (resi1 in PI_RESIS and resi2 in CATION_RESIS)) and \
-                resi1_num != resi2_num and \
-                abs(resi1_num - resi2_num) >= 2 and \
-                (resi2_num, resi1_num) not in interacting_resis:
+            if ((resi1 in CATION_RESIS and resi2 in PI_RESIS) or
+                    (resi1 in PI_RESIS and resi2 in CATION_RESIS)) and \
+                    resi1_num != resi2_num and \
+                    abs(resi1_num - resi2_num) >= 2 and \
+                    (resi2_num, resi1_num) not in interacting_resis:
                 interacting_resis.add((resi1_num, resi2_num))
 
         return interacting_resis
-
-
-
-
