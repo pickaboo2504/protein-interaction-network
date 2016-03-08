@@ -6,6 +6,21 @@ import os
 pdb_handle = os.path.join(sys.path[0], 'test_data/2VIU.pdb')
 net = ProteinInteractionNetwork(pdb_handle)
 
+BOND_TYPES = ['hydrophobic', 'disulfide', 'hbond', 'ionic', 'aromatic',
+              'aromatic_sulphur', 'cation_pi', 'backbone']
+
+AROMATIC_RESIS = ['PHE', 'TRP', 'HIS', 'TYR']
+
+
+def test_data_integrity():
+    """
+    A series of data and data structure integrity tests.
+    """
+
+    for u, v, d in net.edges(data=True):
+        assert isinstance(d['kind'], set)
+        for kind in d['kind']:
+            assert kind in BOND_TYPES
 
 def test_parse_pdb():
     """
@@ -53,77 +68,100 @@ def test_compute_distmat():
     assert distmat.shape == (len(data), len(data))
 
 
-def test_get_interacting_atoms():
+def test_get_interacting_atoms_():
     """
-    Tests the function get_interacting_atoms, using 2VIU data.
+    Tests the function get_interacting_atoms_, using 2VIU data.
     """
-    interacting = net.get_interacting_atoms(6, net.distmat)
+    interacting = net.get_interacting_atoms_(6, net.distmat)
     # Asserts that the number of interactions found at 6A for 2VIU.
     assert len(interacting[0]) == 156420
 
-
-def test_get_hydrophobic_interactions():
+def get_edges_by_bond_type(net, bond_type):
     """
-    Tests the function get_hydrophobic_interactions, using 2VIU data.
-    """
-    resis = net.get_hydrophobic_interactions()
-    assert len(resis) == 574
+    Parameters:
+    ===========
+    - net: the protein interaction graph
+    - bond_type: (str) one of the elements in the variable BOND_TYPES
 
-
-def test_get_disulfide_interactions():
-    """
-    Tests the function get_disulfide_interactions, using 2VIU data.
-    """
-    resis = net.get_disulfide_interactions()
-    assert len(resis) == 12
-
-
-def test_get_hbond_interactions():
-    """
-    Tests the function get_hydrogen_bond_interactions, using 2VIU data.
-    """
-    resis = net.get_hydrogen_bond_interactions()
-    assert len(resis) == 172
-
-
-def test_get_ionic_interactions():
-    """
-    Tests the function get_ionic_interactions, using 2VIU data.
-    """
-    resis = net.get_ionic_interactions()
-    assert len(resis) == 192
-
-
-def test_get_ring_atoms():
-    """
-    Tests the function get_ring_atoms, using 2VIU data.
+    Returns:
+    ========
+    - resis: (list) a list of tuples, where each tuple is an edge.
     """
 
-    ring_atom_TRP = net.get_ring_atoms(net.dataframe, 'TRP')
+    resis = []
+    for n1, n2, d in net.edges(data=True):
+        if bond_type in d['kind']:
+            resis.append((n1, n2))
+    return resis
+
+def test_add_hydrophobic_interactions_():
+    """
+    Tests the function add_hydrophobic_interactions_, using 2VIU data.
+    """
+    net.add_hydrophobic_interactions_()
+    resis = get_edges_by_bond_type(net, 'hydrophobic')
+    assert len(resis) == 287
+
+
+def test_add_disulfide_interactions_():
+    """
+    Tests the function add_disulfide_interactions_, using 2VIU data.
+    """
+    net.add_disulfide_interactions_()
+    resis = get_edges_by_bond_type(net, 'disulfide')
+    assert len(resis) == 6
+
+
+def test_add_hydrogen_bond_interactions_():
+    """
+    Tests the function add_hydrogen_bond_interactions_, using 2VIU data.
+    """
+    net.add_hydrogen_bond_interactions_()
+    resis = get_edges_by_bond_type(net, 'hbond')
+    assert len(resis) == 86
+
+
+def test_add_ionic_interactions_():
+    """
+    Tests the function add_ionic_interactions_, using 2VIU data.
+    """
+    net.add_ionic_interactions_()
+    resis = get_edges_by_bond_type(net, 'ionic')
+    assert len(resis) == 96
+
+def test_add_aromatic_interactions_():
+    """
+    Tests the function add_aromatic_interactions_, using 2VIU data.
+    """
+    net.add_aromatic_interactions_()
+    aromatic_resis = get_edges_by_bond_type(net, 'aromatic')
+    for n1, n2 in aromatic_resis:
+        assert net.node[n1]['aa'] in AROMATIC_RESIS
+        assert net.node[n2]['aa'] in AROMATIC_RESIS
+
+    assert len(aromatic_resis) == 34
+
+def test_get_ring_atoms_():
+    """
+    Tests the function get_ring_atoms_, using 2VIU data.
+    """
+
+    ring_atom_TRP = net.get_ring_atoms_(net.dataframe, 'TRP')
     assert len(ring_atom_TRP) == 63
-    ring_atom_HIS = net.get_ring_atoms(net.dataframe, 'HIS')
+    ring_atom_HIS = net.get_ring_atoms_(net.dataframe, 'HIS')
     assert len(ring_atom_HIS) == 55
 
 
-def test_get_ring_centroids_and_centroids():
+def test_get_ring_centroids():
     """
-    Tests the function get_ring_centroids, using 2VIU data.
+    Tests the function get_ring_centroids_, using 2VIU data.
     """
-    ring_atom_TYR = net.get_ring_atoms(net.dataframe, 'TYR')
+    ring_atom_TYR = net.get_ring_atoms_(net.dataframe, 'TYR')
     assert len(ring_atom_TYR) == 96
-    centroid_TYR = net.get_ring_centroids(ring_atom_TYR, 'TYR')
+    centroid_TYR = net.get_ring_centroids_(ring_atom_TYR, 'TYR')
     assert len(centroid_TYR) == 16
 
-    ring_atom_PHE = net.get_ring_atoms(net.dataframe, 'PHE')
+    ring_atom_PHE = net.get_ring_atoms_(net.dataframe, 'PHE')
     assert len(ring_atom_PHE) == 108
-    centroid_PHE = net.get_ring_centroids(ring_atom_PHE, 'PHE')
+    centroid_PHE = net.get_ring_centroids_(ring_atom_PHE, 'PHE')
     assert len(centroid_PHE) == 18
-
-
-def test_get_aromatic_interactions():
-    """
-    Tests the function get_aromatic_interactions, using 2VIU data.
-    """
-    aromatic_resis = net.get_aromatic_interactions()
-    assert len(aromatic_resis) == 34
-    print(aromatic_resis)
