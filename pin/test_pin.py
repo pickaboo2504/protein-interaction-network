@@ -2,19 +2,20 @@ import pandas as pd
 from pin import ProteinInteractionNetwork
 import sys
 import os
+from resi_atoms import BOND_TYPES, AROMATIC_RESIS, SULPHUR_RESIS, POS_AA,\
+    NEG_AA, CATION_RESIS, PI_RESIS
 
 pdb_handle = os.path.join(sys.path[0], 'test_data/2VIU.pdb')
 net = ProteinInteractionNetwork(pdb_handle)
 
-BOND_TYPES = ['hydrophobic', 'disulfide', 'hbond', 'ionic', 'aromatic',
-              'aromatic_sulphur', 'cation_pi', 'backbone']
 
-AROMATIC_RESIS = ['PHE', 'TRP', 'HIS', 'TYR']
-SULPHUR_RESIS = ['MET', 'CYS']
-POS_AA = ['HIS', 'LYS', 'ARG']
-NEG_AA = ['GLU', 'ASP']
-CATION_RESIS = ['LYS', 'ARG']
-PI_RESIS = ['PHE', 'TYR', 'TRP']
+def test_node_feature_array_length():
+    """
+    Checks that the feature array length for each node is correct.
+    """
+
+    for n, d in net.nodes(data=True):
+        assert len(d['features']) == 35
 
 
 def test_bond_types_are_correct():
@@ -132,24 +133,6 @@ def test_add_disulfide_interactions_():
 #     net.add_hydrogen_bond_interactions_()
 #     resis = net.get_edges_by_bond_type('hbond')
 #     assert len(resis) == 86
-
-
-def test_add_ionic_interactions_():
-    """
-    Tests the function add_ionic_interactions_, using 2VIU data.
-    """
-    resis = net.get_edges_by_bond_type('ionic')
-    POS_AA = ['HIS', 'LYS', 'ARG']
-    NEG_AA = ['GLU', 'ASP']
-
-    for (r1, r2) in resis:
-        resi1 = net.node[r1]['resi_name']
-        resi2 = net.node[r2]['resi_name']
-
-        condition1 = resi1 in POS_AA and resi2 in NEG_AA
-        condition2 = resi2 in POS_AA and resi1 in NEG_AA
-
-        assert condition1 or condition2, print(r1, r2)
 
 
 def test_add_aromatic_interactions_():
