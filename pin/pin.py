@@ -6,16 +6,15 @@ A Python module that computes the protein interaction graph from a PDB file.
 """
 
 import pandas as pd
-import numbers
 import numpy as np
 import networkx as nx
 
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, euclidean
 from sklearn.preprocessing import LabelBinarizer
-from resi_atoms import BACKBONE_ATOMS, AMINO_ACIDS, BOND_TYPES, RESI_NAMES,\
+from resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
     HYDROPHOBIC_RESIS, DISULFIDE_RESIS, DISULFIDE_ATOMS, AA_RING_ATOMS,\
     IONIC_RESIS, POS_AA, NEG_AA, AROMATIC_RESIS, CATION_PI_RESIS,\
-    CATION_RESIS, PI_RESIS
+    CATION_RESIS, PI_RESIS, ISOELECTRIC_POINTS, MOLECULAR_WEIGHTS
 
 
 class ProteinInteractionNetwork(nx.Graph):
@@ -38,6 +37,7 @@ class ProteinInteractionNetwork(nx.Graph):
         self.rgroup_df = self.get_rgroup_dataframe_()
         # Automatically compute the interaction graph upon loading.
         self.compute_interaction_graph()
+        self.compute_all_node_features()
 
     def compute_interaction_graph(self):
         """
@@ -57,30 +57,44 @@ class ProteinInteractionNetwork(nx.Graph):
             - aromatic_sulphur: BOOLEAN
             - cation_pi:        BOOLEAN
         """
-        # Populate nodes, which are amino acid positions, and have metadata
-        nums_and_names = set(zip(self.dataframe['resi_num'],
-                                 self.dataframe['resi_name'],
-                                 self.dataframe['chain_id']))
-
-        for r, d in self.dataframe.iterrows():
-            self.add_node(d['node_id'],
-                          chain_id=d['chain_id'],
-                          resi_num=d['resi_num'],
-                          resi_name=d['resi_name'],
+        # Add in nodes with their metadata
+        # Metadata are:
+        # - x, y, z coordinates of C-alpha
+        # - chain_id
+        # - resi_num
+        # - resi_name
+        for g, d in self.dataframe.groupby(['node_id',
+                                            'chain_id',
+                                            'resi_num',
+                                            'resi_name']):
+            node_id, chain_id, resi_num, resi_name = g
+            x = d[d['atom'] == 'CA']['x'].values[0]
+            y = d[d['atom'] == 'CA']['y'].values[0]
+            z = d[d['atom'] == 'CA']['z'].values[0]
+            self.add_node(node_id,
+                          chain_id=chain_id,
+                          resi_num=resi_num,
+                          resi_name=resi_name,
+                          x=x,
+                          y=y,
+                          z=z,
                           features=None)
 
-        # 10 March 2016
-        # I currently do not have a good way of telling whether two amino
-        # acids are covalently bonded to one another in the backbone sequence.
-        # The particular problem I am most concerned with is the scenario
-        # where we leave one chain and go to the next.
-        #
-        # # Add in edges for amino acids that are adjacent in the linear amino
-        # # acid sequence.
-        # nodes1 = self.nodes()[0:-1]
-        # nodes2 = self.nodes()[1:]
-        # for n1, n2 in zip(nodes1, nodes2):
-        #     self.add_edge(n1, n2, kind='backbone')
+        # Add in edges for amino acids that are adjacent in the linear amino
+        # acid sequence.
+        for n, d in self.nodes(data=True):
+            prev_node = d['chain_id'] + str(d['resi_num'] - 1)
+            next_node = d['chain_id'] + str(d['resi_num'] + 1)
+
+            # Find the previous node in the graph.
+            prev_node = [n for n in self.nodes() if prev_node in n]
+            next_node = [n for n in self.nodes() if next_node in n]
+
+            if len(prev_node) == 1:
+                self.add_edge(n, prev_node[0], kind={'backbone'})
+
+            if len(next_node) == 1:
+                self.add_edge(n, next_node[0], kind={'backbone'})
 
         # Define function shortcuts for each of the interactions.
         funcs = dict()
@@ -190,7 +204,6 @@ class ProteinInteractionNetwork(nx.Graph):
         resi2 = dataframe.ix[interacting_atoms[1]]['node_id'].values
 
         interacting_resis = set(list(zip(resi1, resi2)))
-        filtered_interacting_resis = set()
         for i1, i2 in interacting_resis:
             if i1 != i2:
                 if self.has_edge(i1, i2):
@@ -281,9 +294,7 @@ class ProteinInteractionNetwork(nx.Graph):
                                          True)
         distmat = self.compute_distmat(hbond_df)
         interacting_atoms = self.get_interacting_atoms_(3.5, distmat)
-        interacting_resis = self.add_interacting_resis_(interacting_atoms,
-                                                        hbond_df,
-                                                        ['hbond'])
+        self.add_interacting_resis_(interacting_atoms, hbond_df, ['hbond'])
 
         # For these atoms, find those that are within 4.0A of one another.
         HBOND_ATOMS_SULPHUR = ['SD', 'SG']
@@ -293,9 +304,7 @@ class ProteinInteractionNetwork(nx.Graph):
                                          True)
         distmat = self.compute_distmat(hbond_df)
         interacting_atoms = self.get_interacting_atoms_(4.0, distmat)
-        interacting_resis = self.add_interacting_resis_(interacting_atoms,
-                                                        hbond_df,
-                                                        ['hbond'])
+        self.add_interacting_resis_(interacting_atoms, hbond_df, ['hbond'])
 
     def add_ionic_interactions_(self):
         """
@@ -469,7 +478,6 @@ class ProteinInteractionNetwork(nx.Graph):
         distmat = self.compute_distmat(cation_pi_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
-        interacting_resis = set()
 
         for (a1, a2) in interacting_atoms:
             resi1 = cation_pi_df.ix[a1]['node_id']
@@ -501,7 +509,15 @@ class ProteinInteractionNetwork(nx.Graph):
                 resis.append((n1, n2))
         return resis
 
-    def add_node_features(self, node):
+    def compute_all_node_features(self):
+        """
+        Calls on compute_node_features (below).
+        """
+
+        for n in self.nodes():
+            self.compute_node_features(n)
+
+    def compute_node_features(self, node):
         """
         A function that computes one node's features from the data.
 
@@ -514,6 +530,7 @@ class ProteinInteractionNetwork(nx.Graph):
           [1 cell] (#nts: not sure if this is necessary.)
         - the sum of all euclidean distances on each edge connecting those
           nodes [1 cell]
+        - the types of interactions it is participating in [8 cells]
 
         Parameters:
         ===========
@@ -523,9 +540,62 @@ class ProteinInteractionNetwork(nx.Graph):
         # A defensive programming assertion!
         assert self.has_node(node)
 
-        # Encode the amino acid as a one-of-K encoding.
-        lb = LabelBinarizer()
-        lb.fit(RESI_NAMES)
-        aa = lb.transform(net.node[node]['resi_name'])
+        # Declare a convenience variable for accessing the amino acid name
+        aa = self.node[node]['resi_name']
 
-        #
+        # Encode the amino acid as a one-of-K encoding.
+        aa_lb = LabelBinarizer()
+        aa_lb.fit(RESI_NAMES)
+        # following line is hack-ish; needed in order to get dimensions
+        # correct.
+        aa_enc = aa_lb.transform([aa])[0]
+
+        # Encode the isoelectric point and mol weights of the amino acid.
+        pka = ISOELECTRIC_POINTS[aa]
+        mw = MOLECULAR_WEIGHTS[aa]
+
+        # Encode the degree of the node.
+        deg = self.degree(node)
+
+        # Encode the sum of euclidean distances on each edge connecting the
+        # to the node.
+        # Note: this is approximate, and only factors in the C-alpha distances
+        # between the nodes, not the actual interaction distances.
+        eucl_dist = 0
+        for n2 in self.neighbors(node):
+            dist = euclidean(self.node_coords(node), self.node_coords(n2))
+            eucl_dist += dist
+
+        # Encode the bond types that it is involved in
+        bond_lb = LabelBinarizer()
+        bond_lb.fit(BOND_TYPES)
+
+        bond_set = set()
+        for n2 in self.neighbors(node):
+            bond_set = bond_set.union(self.edge[node][n2]['kind'])
+
+        bonds = np.zeros(len(BOND_TYPES))
+        if len(bond_set) > 0:
+            bond_array = bond_lb.transform([i for i in bond_set])
+
+            for b in bond_array:
+                bonds = bonds + b
+        # Code blcok ends for encoding bond types.
+
+        # Finally, make the feature vector.
+        self.node[node]['features'] = np.concatenate((aa_enc,
+                                                      [pka],
+                                                      [mw],
+                                                      [deg],
+                                                      [eucl_dist],
+                                                      bonds))
+
+    def node_coords(self, n):
+        """
+        A helper function for getting the x, y, z coordinates of a node.
+        """
+        x = self.node[n]['x']
+        y = self.node[n]['y']
+        z = self.node[n]['z']
+
+        return x, y, z
