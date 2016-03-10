@@ -66,14 +66,18 @@ class ProteinInteractionNetwork(nx.Graph):
                                  self.dataframe['chain_id']))
 
         for r, d in self.dataframe.iterrows():
-        # for num, name, chain in nums_and_names:
             self.add_node(d['node_id'],
-                          chain_id=d['chain_id'], 
+                          chain_id=d['chain_id'],
                           resi_num=d['resi_num'],
                           resi_name=d['resi_name'],
                           features=None)
 
-        # We do not want this just yet.
+        # 10 March 2016
+        # I currently do not have a good way of telling whether two amino
+        # acids are covalently bonded to one another in the backbone sequence.
+        # The particular problem I am most concerned with is the scenario
+        # where we leave one chain and go to the next.
+        #
         # # Add in edges for amino acids that are adjacent in the linear amino
         # # acid sequence.
         # nodes1 = self.nodes()[0:-1]
@@ -122,8 +126,8 @@ class ProteinInteractionNetwork(nx.Graph):
 
         atomic_df = pd.DataFrame(atomic_data)
         atomic_df['node_id'] = atomic_df['chain_id'] + \
-                               atomic_df['resi_num'].map(str) + \
-                               atomic_df['resi_name']
+            atomic_df['resi_num'].map(str) + \
+            atomic_df['resi_name']
 
         return atomic_df
 
@@ -196,7 +200,7 @@ class ProteinInteractionNetwork(nx.Graph):
                     for k in kind:
                         self.edge[i1][i2]['kind'].add(k)
                 else:
-                    self.add_edge(i1, i2, {'kind':set(kind)})
+                    self.add_edge(i1, i2, {'kind': set(kind)})
 
         # return filtered_interacting_resis
 
@@ -242,7 +246,7 @@ class ProteinInteractionNetwork(nx.Graph):
         distmat = self.compute_distmat(hydrophobics_df)
         interacting_atoms = self.get_interacting_atoms_(5, distmat)
         interacting_resis = self.add_interacting_resis_(interacting_atoms,
-                                                        hydrophobics_df, 
+                                                        hydrophobics_df,
                                                         ['hydrophobic'])
 
         return interacting_resis
@@ -317,16 +321,16 @@ class ProteinInteractionNetwork(nx.Graph):
                                          True)
         distmat = self.compute_distmat(ionic_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
-        
+
         self.add_interacting_resis_(interacting_atoms, ionic_df, ['ionic'])
 
         # Check that the interacting residues are of opposite charges
         for r1, r2 in self.get_edges_by_bond_type('ionic'):
             condition1 = self.node[r1]['resi_name'] in POS_AA and \
-                         self.node[r2]['resi_name'] in NEG_AA
+                self.node[r2]['resi_name'] in NEG_AA
 
             condition2 = self.node[r2]['resi_name'] in POS_AA and \
-                         self.node[r1]['resi_name'] in NEG_AA
+                self.node[r1]['resi_name'] in NEG_AA
 
             if not condition1 or condition2:
                 self.remove_edge(r1, r2)
@@ -373,7 +377,7 @@ class ProteinInteractionNetwork(nx.Graph):
         indices = np.where(distmat > 0)
 
         interacting_resis = []
-        for i, (r, c) in enumerate(zip(indices[0], indices[1])):            
+        for i, (r, c) in enumerate(zip(indices[0], indices[1])):
             interacting_resis.append((distmat.index[r], distmat.index[c]))
 
         for i, (n1, n2) in enumerate(interacting_resis):
@@ -473,9 +477,9 @@ class ProteinInteractionNetwork(nx.Graph):
                 if self.has_edge(resi1, resi2):
                     self.edge[resi1][resi2]['kind'].add('aromatic_sulphur')
                 else:
-                    self.add_edge(resi1, 
-                                  resi2, 
-                                  {'kind':{'aromatic_sulphur'}})
+                    self.add_edge(resi1,
+                                  resi2,
+                                  {'kind': {'aromatic_sulphur'}})
 
     def add_cation_pi_interactions_(self):
         RESIDUES = ['LYS', 'ARG', 'PHE', 'TYR', 'TRP']
@@ -500,7 +504,7 @@ class ProteinInteractionNetwork(nx.Graph):
                 if self.has_edge(resi1, resi2):
                     self.edge[resi1][resi2]['kind'].add('cation_pi')
                 else:
-                    self.add_edge(resi1, resi2, {'kind':{'cation_pi'}})
+                    self.add_edge(resi1, resi2, {'kind': {'cation_pi'}})
 
     def get_edges_by_bond_type(self, bond_type):
         """
@@ -540,8 +544,3 @@ class ProteinInteractionNetwork(nx.Graph):
 
         # A defensive programming assertion!
         assert self.has_node(node)
-
-        
-
-
-        
