@@ -11,14 +11,11 @@ import numpy as np
 import networkx as nx
 
 from scipy.spatial.distance import pdist, squareform
-from sklearn.preprocessing import OneHotEncoder
-
-# A list of backbone chain atoms
-BACKBONE_ATOMS = ['N', 'CA', 'C', 'O']
-AMINO_ACIDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-               'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Y', 'Z']
-BOND_TYPES = ['hydrophobic', 'disulfide', 'hbond', 'ionic', 'aromatic',
-              'aromatic_sulphur', 'cation_pi', 'backbone']
+from sklearn.preprocessing import LabelBinarizer
+from resi_atoms import BACKBONE_ATOMS, AMINO_ACIDS, BOND_TYPES, RESI_NAMES,\
+    HYDROPHOBIC_RESIS, DISULFIDE_RESIS, DISULFIDE_ATOMS, AA_RING_ATOMS,\
+    IONIC_RESIS, POS_AA, NEG_AA, AROMATIC_RESIS, CATION_PI_RESIS,\
+    CATION_RESIS, PI_RESIS
 
 
 class ProteinInteractionNetwork(nx.Graph):
@@ -236,9 +233,6 @@ class ProteinInteractionNetwork(nx.Graph):
 
         Criteria: R-group residues are within 5A distance.
         """
-        HYDROPHOBIC_RESIS = ['ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE',
-                             'TRP', 'PRO', 'TYR']
-
         hydrophobics_df = self.filter_dataframe(self.rgroup_df,
                                                 'resi_name',
                                                 HYDROPHOBIC_RESIS,
@@ -256,8 +250,6 @@ class ProteinInteractionNetwork(nx.Graph):
         Finds all disulfide interactions between CYS residues, such that the
         sulfur atom pairs are within 2.2A of each other.
         """
-        DISULFIDE_RESIS = ['CYS']
-        DISULFIDE_ATOMS = ['SG']
 
         disulfide_df = self.filter_dataframe(self.rgroup_df,
                                              'resi_name',
@@ -310,11 +302,6 @@ class ProteinInteractionNetwork(nx.Graph):
         Finds all ionic interactiosn between ARG, LYS, HIS, ASP, and GLU.
         Distance cutoff: 6A.
         """
-
-        IONIC_RESIS = ['ARG', 'LYS', 'HIS', 'ASP', 'GLU']
-        POS_AA = ['HIS', 'LYS', 'ARG']
-        NEG_AA = ['GLU', 'ASP']
-
         ionic_df = self.filter_dataframe(self.rgroup_df,
                                          'resi_name',
                                          IONIC_RESIS,
@@ -359,7 +346,6 @@ class ProteinInteractionNetwork(nx.Graph):
           get_interacting_atoms), as they do not return centroid atom
           euclidean coordinates.
         """
-        AROMATIC_RESIS = ['PHE', 'TRP', 'HIS', 'TYR']
         dfs = []
         for resi in AROMATIC_RESIS:
             resi_rings_df = self.get_ring_atoms_(self.dataframe, resi)
@@ -406,12 +392,6 @@ class ProteinInteractionNetwork(nx.Graph):
                      selecting just the ring atoms from a particular amino
                      acid.
         """
-
-        AA_RING_ATOMS = dict()
-        AA_RING_ATOMS['PHE'] = ['CG', 'CD', 'CE', 'CZ']
-        AA_RING_ATOMS['TRP'] = ['CD', 'CE', 'CH', 'CZ']
-        AA_RING_ATOMS['HIS'] = ['CG', 'CD', 'CE', 'ND', 'NE']
-        AA_RING_ATOMS['TYR'] = ['CG', 'CD', 'CE', 'CZ']
 
         ring_atom_df = self.filter_dataframe(dataframe,
                                              'resi_name',
@@ -482,12 +462,10 @@ class ProteinInteractionNetwork(nx.Graph):
                                   {'kind': {'aromatic_sulphur'}})
 
     def add_cation_pi_interactions_(self):
-        RESIDUES = ['LYS', 'ARG', 'PHE', 'TYR', 'TRP']
-        CATION_RESIS = ['LYS', 'ARG']
-        PI_RESIS = ['PHE', 'TYR', 'TRP']
-
         cation_pi_df = self.filter_dataframe(self.rgroup_df,
-                                             'resi_name', RESIDUES, True)
+                                             'resi_name',
+                                             CATION_PI_RESIS,
+                                             True)
         distmat = self.compute_distmat(cation_pi_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
@@ -544,3 +522,10 @@ class ProteinInteractionNetwork(nx.Graph):
 
         # A defensive programming assertion!
         assert self.has_node(node)
+
+        # Encode the amino acid as a one-of-K encoding.
+        lb = LabelBinarizer()
+        lb.fit(RESI_NAMES)
+        aa = lb.transform(net.node[node]['resi_name'])
+
+        #
