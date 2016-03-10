@@ -11,6 +11,7 @@ import numpy as np
 import networkx as nx
 
 from scipy.spatial.distance import pdist, squareform
+from sklearn.preprocessing import OneHotEncoder
 
 # A list of backbone chain atoms
 BACKBONE_ATOMS = ['N', 'CA', 'C', 'O']
@@ -61,16 +62,24 @@ class ProteinInteractionNetwork(nx.Graph):
         """
         # Populate nodes, which are amino acid positions, and have metadata
         nums_and_names = set(zip(self.dataframe['resi_num'],
-                                 self.dataframe['resi_name']))
-        for num, name in nums_and_names:
-            self.add_node(num, aa=name, features=None)
+                                 self.dataframe['resi_name'],
+                                 self.dataframe['chain_id']))
 
-        # Add in edges for amino acids that are adjacent in the linear amino
-        # acid sequence.
-        max_node = max([n for n in self.nodes()])
-        for n, d in self.nodes(data=True):
-            if n < max_node:
-                self.add_edge(n, n+1, kind={'backbone'})
+        for r, d in self.dataframe.iterrows():
+        # for num, name, chain in nums_and_names:
+            self.add_node(d['node_id'],
+                          chain_id=d['chain_id'], 
+                          resi_num=d['resi_num'],
+                          resi_name=d['resi_name'],
+                          features=None)
+
+        # We do not want this just yet.
+        # # Add in edges for amino acids that are adjacent in the linear amino
+        # # acid sequence.
+        # nodes1 = self.nodes()[0:-1]
+        # nodes2 = self.nodes()[1:]
+        # for n1, n2 in zip(nodes1, nodes2):
+        #     self.add_edge(n1, n2, kind='backbone')
 
         # Define function shortcuts for each of the interactions.
         funcs = dict()
@@ -85,12 +94,6 @@ class ProteinInteractionNetwork(nx.Graph):
         # Add in each type of edge, based on the above.
         for k, v in funcs.items():
             v()
-                # if (r1, r2) not in self.edges():
-                #     attrs = dict()
-                #     attrs[k] = True
-                #     self.add_edge(r1, r2, attr_dict=attrs)
-                # else:
-                #     self.edge[r1][r2][k] = True
 
     def parse_pdb(self):
         """
@@ -116,7 +119,12 @@ class ProteinInteractionNetwork(nx.Graph):
                     data['z'] = float(line[46:53])
 
                     atomic_data.append(data)
+
         atomic_df = pd.DataFrame(atomic_data)
+        atomic_df['node_id'] = atomic_df['chain_id'] + \
+                               atomic_df['resi_num'].map(str) + \
+                               atomic_df['resi_name']
+
         return atomic_df
 
     def compute_distmat(self, dataframe):
@@ -153,7 +161,7 @@ class ProteinInteractionNetwork(nx.Graph):
         Parameters:
         ===========
         - interacting_atoms:    (numpy array) result from
-                                get_interacting_atoms_ function above.
+                                get_interacting_atoms_ function.
         - dataframe:            (pandas dataframe) a pandas dataframe that
                                 houses the euclidean locations of each atom.
         - kind:                 (list) the kind of interaction. Contains one
@@ -177,15 +185,13 @@ class ProteinInteractionNetwork(nx.Graph):
         for k in kind:
             assert k in BOND_TYPES
 
-        resi1 = dataframe.ix[interacting_atoms[0]]['resi_num'].values
-        resi2 = dataframe.ix[interacting_atoms[1]]['resi_num'].values
+        resi1 = dataframe.ix[interacting_atoms[0]]['node_id'].values
+        resi2 = dataframe.ix[interacting_atoms[1]]['node_id'].values
 
         interacting_resis = set(list(zip(resi1, resi2)))
         filtered_interacting_resis = set()
         for i1, i2 in interacting_resis:
-            # check that the interacting residues are 2 or more amino acids
-            # apart
-            if abs(i1 - i2) >= 2:
+            if i1 != i2:
                 if self.has_edge(i1, i2):
                     for k in kind:
                         self.edge[i1][i2]['kind'].add(k)
@@ -302,6 +308,8 @@ class ProteinInteractionNetwork(nx.Graph):
         """
 
         IONIC_RESIS = ['ARG', 'LYS', 'HIS', 'ASP', 'GLU']
+        POS_AA = ['HIS', 'LYS', 'ARG']
+        NEG_AA = ['GLU', 'ASP']
 
         ionic_df = self.filter_dataframe(self.rgroup_df,
                                          'resi_name',
@@ -309,10 +317,19 @@ class ProteinInteractionNetwork(nx.Graph):
                                          True)
         distmat = self.compute_distmat(ionic_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
-        interacting_resis = self.add_interacting_resis_(interacting_atoms,
-                                                        ionic_df,
-                                                        ['ionic'])
-        return interacting_resis
+        
+        self.add_interacting_resis_(interacting_atoms, ionic_df, ['ionic'])
+
+        # Check that the interacting residues are of opposite charges
+        for r1, r2 in self.get_edges_by_bond_type('ionic'):
+            condition1 = self.node[r1]['resi_name'] in POS_AA and \
+                         self.node[r2]['resi_name'] in NEG_AA
+
+            condition2 = self.node[r2]['resi_name'] in POS_AA and \
+                         self.node[r1]['resi_name'] in NEG_AA
+
+            if not condition1 or condition2:
+                self.remove_edge(r1, r2)
 
     def add_aromatic_interactions_(self):
         """
@@ -331,6 +348,12 @@ class ProteinInteractionNetwork(nx.Graph):
         Centroids of these atoms are taken by taking:
             (mean x), (mean y), (mean z)
         for each of the ring atoms.
+
+        Notes for future self/developers:
+        - Because of the requirement to pre-compute ring centroids, we do not
+          use the functions written above (filter_dataframe, compute_distmat,
+          get_interacting_atoms), as they do not return centroid atom
+          euclidean coordinates.
         """
         AROMATIC_RESIS = ['PHE', 'TRP', 'HIS', 'TYR']
         dfs = []
@@ -340,17 +363,26 @@ class ProteinInteractionNetwork(nx.Graph):
             dfs.append(resi_centroid_df)
 
         aromatic_df = pd.concat(dfs)
-        aromatic_df.sort_values(by='resi_num', inplace=True)
+        aromatic_df.sort_values(by='node_id', inplace=True)
         aromatic_df.reset_index(inplace=True, drop=True)
 
         distmat = self.compute_distmat(aromatic_df)
-        interacting_atoms = distmat[(distmat >= 4.5) & (distmat <= 7)]
-        print(interacting_atoms)
-        interacting_resis = self.add_interacting_resis_(interacting_atoms,
-                                                        aromatic_df,
-                                                        ['aromatic'])
+        distmat.set_index(aromatic_df['node_id'], inplace=True)
+        distmat.columns = aromatic_df['node_id']
+        distmat = distmat[(distmat >= 4.5) & (distmat <= 7)].fillna(0)
+        indices = np.where(distmat > 0)
 
-        return interacting_resis
+        interacting_resis = []
+        for i, (r, c) in enumerate(zip(indices[0], indices[1])):            
+            interacting_resis.append((distmat.index[r], distmat.index[c]))
+
+        for i, (n1, n2) in enumerate(interacting_resis):
+            assert self.node[n1]['resi_name'] in AROMATIC_RESIS
+            assert self.node[n2]['resi_name'] in AROMATIC_RESIS
+            if self.has_edge(n1, n2):
+                self.edge[n1][n2]['kind'].add('aromatic')
+            else:
+                self.add_edge(n1, n2, kind={'aromatic'})
 
     def get_ring_atoms_(self, dataframe, aa):
         """
@@ -381,11 +413,11 @@ class ProteinInteractionNetwork(nx.Graph):
                                              'resi_name',
                                              [aa],
                                              True)
+
         ring_atom_df = self.filter_dataframe(ring_atom_df,
                                              'atom',
                                              AA_RING_ATOMS[aa],
                                              True)
-
         return ring_atom_df
 
     def get_ring_centroids_(self, ring_atom_df, aa):
@@ -408,10 +440,9 @@ class ProteinInteractionNetwork(nx.Graph):
         - centroid_df: a dataframe containing just the centroid coordinates of
                        the ring atoms of each residue.
         """
-        centroid_df = ring_atom_df.groupby('resi_num')\
+        centroid_df = ring_atom_df.groupby('node_id')\
                                   .mean()[['x', 'y', 'z']]\
                                   .reset_index()
-        centroid_df['resi_name'] = aa
 
         return centroid_df
 
@@ -432,21 +463,19 @@ class ProteinInteractionNetwork(nx.Graph):
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
 
         for (a1, a2) in interacting_atoms:
-            resi1 = aromatic_sulphur_df.ix[a1]['resi_name']
-            resi2 = aromatic_sulphur_df.ix[a2]['resi_name']
+            resi1 = aromatic_sulphur_df.ix[a1]['node_id']
+            resi2 = aromatic_sulphur_df.ix[a2]['node_id']
 
-            resi1_num = aromatic_sulphur_df.ix[a1]['resi_num']
-            resi2_num = aromatic_sulphur_df.ix[a2]['resi_num']
+            condition1 = resi1 in SULPHUR_RESIS and resi2 in AROMATIC_RESIS
+            condition2 = resi1 in AROMATIC_RESIS and resi2 in SULPHUR_RESIS
 
-            if ((resi1 in SULPHUR_RESIS and resi2 in AROMATIC_RESIS) or
-                    (resi1 in AROMATIC_RESIS and resi2 in SULPHUR_RESIS)) and \
-                    resi1_num != resi2_num and \
-                    abs(resi2_num - resi1_num) >= 2:
+            if (condition1 or condition2) and resi1 != resi2:
                 if self.has_edge(resi1, resi2):
-                    self.edge[resi1][resi2]
-                    self.add_edge(resi1_num, resi2_num, {'kind':{'aromatic'}})
-
-        # return interacting_resis
+                    self.edge[resi1][resi2]['kind'].add('aromatic_sulphur')
+                else:
+                    self.add_edge(resi1, 
+                                  resi2, 
+                                  {'kind':{'aromatic_sulphur'}})
 
     def add_cation_pi_interactions_(self):
         RESIDUES = ['LYS', 'ARG', 'PHE', 'TYR', 'TRP']
@@ -461,24 +490,38 @@ class ProteinInteractionNetwork(nx.Graph):
         interacting_resis = set()
 
         for (a1, a2) in interacting_atoms:
-            resi1 = cation_pi_df.ix[a1]['resi_name']
-            resi2 = cation_pi_df.ix[a2]['resi_name']
+            resi1 = cation_pi_df.ix[a1]['node_id']
+            resi2 = cation_pi_df.ix[a2]['node_id']
 
-            resi1_num = cation_pi_df.ix[a1]['resi_num']
-            resi2_num = cation_pi_df.ix[a2]['resi_num']
+            condition1 = resi1 in CATION_RESIS and resi2 in PI_RESIS
+            condition2 = resi1 in PI_RESIS and resi2 in CATION_RESIS
 
-            if ((resi1 in CATION_RESIS and resi2 in PI_RESIS) or
-                    (resi1 in PI_RESIS and resi2 in CATION_RESIS)) and \
-                    resi1_num != resi2_num and \
-                    abs(resi1_num - resi2_num) >= 2 and \
-                    (resi2_num, resi1_num) not in interacting_resis:
-                self.add_edge(resi1_num, resi2_num, {'kind':{'cation_pi'}})
+            if (condition1 or condition2) and resi1 != resi2:
+                if self.has_edge(resi1, resi2):
+                    self.edge[resi1][resi2]['kind'].add('cation_pi')
+                else:
+                    self.add_edge(resi1, resi2, {'kind':{'cation_pi'}})
 
-        return interacting_resis
-
-    def node_features(self):
+    def get_edges_by_bond_type(self, bond_type):
         """
-        A function that computes node features from the data.
+        Parameters:
+        ===========
+        - bond_type: (str) one of the elements in the variable BOND_TYPES
+
+        Returns:
+        ========
+        - resis: (list) a list of tuples, where each tuple is an edge.
+        """
+
+        resis = []
+        for n1, n2, d in self.edges(data=True):
+            if bond_type in d['kind']:
+                resis.append((n1, n2))
+        return resis
+
+    def add_node_features(self, node):
+        """
+        A function that computes one node's features from the data.
 
         The features are as such:
 
@@ -489,5 +532,16 @@ class ProteinInteractionNetwork(nx.Graph):
           [1 cell] (#nts: not sure if this is necessary.)
         - the sum of all euclidean distances on each edge connecting those
           nodes [1 cell]
+
+        Parameters:
+        ===========
+        - node:     A node present in the Protein Interaction Network.
         """
 
+        # A defensive programming assertion!
+        assert self.has_node(node)
+
+        
+
+
+        
