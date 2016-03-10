@@ -27,12 +27,14 @@ def test_bond_types_are_correct():
         for kind in d['kind']:
             assert kind in BOND_TYPES
 
+
 def test_nodes_are_strings():
     """
     Checks to make sure that the nodes are a string.
     """
     for n in net.nodes():
         assert isinstance(n, str)
+
 
 def test_parse_pdb():
     """
@@ -76,6 +78,7 @@ def test_compute_distmat():
     # Asserts that the shape is correct.
     assert distmat.shape == (len(data), len(data))
 
+
 def test_no_self_loops():
     """
     Assures that there are no self loops amongst residues.
@@ -84,6 +87,7 @@ def test_no_self_loops():
     for n in net.nodes():
         assert not net.has_edge(n, n)
 
+
 def test_get_interacting_atoms_():
     """
     Tests the function get_interacting_atoms_, using 2VIU data.
@@ -91,6 +95,7 @@ def test_get_interacting_atoms_():
     interacting = net.get_interacting_atoms_(6, net.distmat)
     # Asserts that the number of interactions found at 6A for 2VIU.
     assert len(interacting[0]) == 156420
+
 
 def test_add_hydrophobic_interactions_():
     """
@@ -138,8 +143,12 @@ def test_add_ionic_interactions_():
     NEG_AA = ['GLU', 'ASP']
 
     for (r1, r2) in resis:
-        condition1 = net.node[r1]['resi_name'] in POS_AA and net.node[r2]['resi_name'] in NEG_AA
-        condition2 = net.node[r2]['resi_name'] in POS_AA and net.node[r1]['resi_name'] in NEG_AA
+        resi1 = net.node[r1]['resi_name']
+        resi2 = net.node[r2]['resi_name']
+
+        condition1 = resi1 in POS_AA and resi2 in NEG_AA
+        condition2 = resi2 in POS_AA and resi1 in NEG_AA
+
         assert condition1 or condition2, print(r1, r2)
 
 
@@ -153,6 +162,7 @@ def test_add_aromatic_interactions_():
         assert net.node[n1]['resi_name'] in AROMATIC_RESIS
         assert net.node[n2]['resi_name'] in AROMATIC_RESIS
 
+
 def test_add_aromatic_sulphur_interactions_():
     """
     Tests the function add_aromatic_sulphur_interactions_, using 2VIU data.
@@ -161,12 +171,13 @@ def test_add_aromatic_sulphur_interactions_():
     resis = net.get_edges_by_bond_type('aromatic_sulphur')
     for n1, n2 in resis:
         condition1 = net.node[n1]['resi_name'] in SULPHUR_RESIS and\
-                     net.node[n2]['resi_name'] in AROMATIC_RESIS
+            net.node[n2]['resi_name'] in AROMATIC_RESIS
 
         condition2 = net.node[n2]['resi_name'] in SULPHUR_RESIS and\
-                     net.node[n1]['resi_name'] in AROMATIC_RESIS
+            net.node[n1]['resi_name'] in AROMATIC_RESIS
 
         assert condition1 or condition2
+
 
 def test_add_cation_pi_interactions_():
     """
@@ -183,11 +194,13 @@ def test_add_cation_pi_interactions_():
 
         assert condition1 or condition2
 
+
 def test_atom_features():
     """
     Tests to make sure that the atom features are correct.
     """
     pass
+
 
 def test_add_ionic_interactions_():
     """
@@ -202,8 +215,6 @@ def test_add_ionic_interactions_():
         condition2 = resi2 in POS_AA and resi1 in NEG_AA
 
         assert condition1 or condition2
-
-
 
 # def test_get_ring_atoms_():
 #     """
