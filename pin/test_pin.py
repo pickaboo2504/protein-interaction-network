@@ -1,7 +1,8 @@
 import pandas as pd
-from pin import ProteinInteractionNetwork
 import sys
 import os
+import pytest
+from pin import ProteinInteractionNetwork
 from resi_atoms import BOND_TYPES, AROMATIC_RESIS, SULPHUR_RESIS, POS_AA,\
     NEG_AA, CATION_RESIS, PI_RESIS
 
@@ -198,6 +199,21 @@ def test_add_ionic_interactions_():
         condition2 = resi2 in POS_AA and resi1 in NEG_AA
 
         assert condition1 or condition2
+
+
+def test_feature_array():
+    """
+    Tests the function feature_array.
+    """
+    with pytest.raises(AssertionError):
+        net.feature_array('atom')
+
+    node_features = net.feature_array(kind='node')
+    assert len(node_features) == len(net.nodes())
+
+    edge_features = net.feature_array(kind='edge')
+    assert len(edge_features) == len(net.edges())
+
 
 # def test_get_ring_atoms_():
 #     """
