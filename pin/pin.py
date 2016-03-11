@@ -38,6 +38,7 @@ class ProteinInteractionNetwork(nx.Graph):
         # Automatically compute the interaction graph upon loading.
         self.compute_interaction_graph()
         self.compute_all_node_features()
+        self.compute_all_edge_features()
 
     def compute_interaction_graph(self):
         """
@@ -358,7 +359,7 @@ class ProteinInteractionNetwork(nx.Graph):
         dfs = []
         for resi in AROMATIC_RESIS:
             resi_rings_df = self.get_ring_atoms_(self.dataframe, resi)
-            resi_centroid_df = self.get_ring_centroids_(resi_rings_df, resi)
+            resi_centroid_df = self.get_ring_centroids_(resi_rings_df)
             dfs.append(resi_centroid_df)
 
         aromatic_df = pd.concat(dfs)
@@ -413,7 +414,7 @@ class ProteinInteractionNetwork(nx.Graph):
                                              True)
         return ring_atom_df
 
-    def get_ring_centroids_(self, ring_atom_df, aa):
+    def get_ring_centroids_(self, ring_atom_df):
         """
         A helper function for add_aromatic_interactions_.
 
@@ -509,6 +510,33 @@ class ProteinInteractionNetwork(nx.Graph):
                 resis.append((n1, n2))
         return resis
 
+    def compute_all_edge_features(self):
+        """
+        Calls on compute_edge_features (below).
+        """
+        for edge in self.edges():
+            self.compute_edge_features(edge)
+
+    def compute_edge_features(self, edge):
+        """
+        A function that computes one edge's features from the data.
+
+        The features are:
+        -----------------
+        - one-of-K encoding for bond type [8 cells]
+        """
+
+        # Defensive programming checks start!
+        assert len(edge) == 2, "Edge must be a 2-tuple."
+        u, v = edge
+        assert self.has_edge(u, v), "Edge not present in graph."
+        # Defensive programming checks end.
+
+        # Encode one-of-K for bond type.
+        bond_set = self.edge[u][v]['kind']
+        bond_features = self.encode_bond_features(bond_set)
+        self.edge[u][v]['features'] = np.concatenate((bond_features,))
+
     def compute_all_node_features(self):
         """
         Calls on compute_node_features (below).
@@ -521,16 +549,22 @@ class ProteinInteractionNetwork(nx.Graph):
         """
         A function that computes one node's features from the data.
 
-        The features are as such:
-
+        The features are:
+        -----------------
         - one-of-K encoding for amino acid identity at that node [23 cells]
+
         - the molecular weight of the amino acid [1 cell]
+
         - the pKa of the amino acid [1 cell]
+
         - the node degree, i.e. the number of other nodes it is connected to
           [1 cell] (#nts: not sure if this is necessary.)
+
         - the sum of all euclidean distances on each edge connecting those
           nodes [1 cell]
-        - the types of interactions it is participating in [8 cells]
+
+        - the types of bond edges it is participating in [8 cells, with each
+          cell representing one of the bond types]
 
         Parameters:
         ===========
@@ -567,12 +601,33 @@ class ProteinInteractionNetwork(nx.Graph):
             eucl_dist += dist
 
         # Encode the bond types that it is involved in
-        bond_lb = LabelBinarizer()
-        bond_lb.fit(BOND_TYPES)
-
         bond_set = set()
         for n2 in self.neighbors(node):
             bond_set = bond_set.union(self.edge[node][n2]['kind'])
+        bonds = self.encode_bond_features(bond_set)
+        # Code block ends for encoding bond types.
+
+        # Finally, make the feature vector.
+        # The single-value variables are enclosed in a list to enable
+        # concatenation in a numpy array.
+        self.node[node]['features'] = np.concatenate((aa_enc,
+                                                      [pka],
+                                                      [mw],
+                                                      [deg],
+                                                      [eucl_dist],
+                                                      bonds))
+
+    def encode_bond_features(self, bond_set):
+        """
+        We break out this function for encoding bond types because it is
+        reused and occupies several lines.
+
+        Parameters:
+        ===========
+        - bond_set: (set or list) of bonds.
+        """
+        bond_lb = LabelBinarizer()
+        bond_lb.fit(BOND_TYPES)
 
         bonds = np.zeros(len(BOND_TYPES))
         if len(bond_set) > 0:
@@ -580,15 +635,8 @@ class ProteinInteractionNetwork(nx.Graph):
 
             for b in bond_array:
                 bonds = bonds + b
-        # Code blcok ends for encoding bond types.
 
-        # Finally, make the feature vector.
-        self.node[node]['features'] = np.concatenate((aa_enc,
-                                                      [pka],
-                                                      [mw],
-                                                      [deg],
-                                                      [eucl_dist],
-                                                      bonds))
+        return bonds
 
     def node_coords(self, n):
         """
@@ -599,3 +647,28 @@ class ProteinInteractionNetwork(nx.Graph):
         z = self.node[n]['z']
 
         return x, y, z
+
+    def feature_array(self, kind):
+        """
+        A convenience function for getting all of the feature arrays from the
+        nodes.
+
+        Parameters:
+        ===========
+        - kind: (str) one of ['node', 'edge']
+
+        Returns:
+        ========
+        if kind == 'node':
+            return node features
+        if kind == 'interactions':
+            return edge features
+        """
+        assert kind in ['node', 'edge'], 'you must specify "node" or "edge"\
+            for the "kind" parameter'
+
+        if kind == 'node':
+            return np.array([d['features'] for n, d in self.nodes(data=True)])
+        elif kind == 'edge':
+            return np.array([d['features'] for u, v, d in
+                            self.edges(data=True)])
