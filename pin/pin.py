@@ -9,7 +9,9 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 
+from itertools import combinations
 from scipy.spatial.distance import pdist, squareform, euclidean
+from scipy.spatial import Delaunay
 from sklearn.preprocessing import LabelBinarizer
 from resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
     HYDROPHOBIC_RESIS, DISULFIDE_RESIS, DISULFIDE_ATOMS, AA_RING_ATOMS,\
@@ -106,6 +108,7 @@ class ProteinInteractionNetwork(nx.Graph):
         funcs['aromatic'] = self.add_aromatic_interactions_
         funcs['aromatic_sulphur'] = self.add_aromatic_sulphur_interactions_
         funcs['cation_pi'] = self.add_cation_pi_interactions_
+        funcs['delaunay'] = self.add_delaunay_triangulation_
 
         # Add in each type of edge, based on the above.
         for k, v in funcs.items():
@@ -189,6 +192,7 @@ class ProteinInteractionNetwork(nx.Graph):
                                 - aromatic
                                 - aromatic_sulphur
                                 - cation_pi
+                                - delaunay
 
         Returns:
         ========
@@ -306,6 +310,36 @@ class ProteinInteractionNetwork(nx.Graph):
         distmat = self.compute_distmat(hbond_df)
         interacting_atoms = self.get_interacting_atoms_(4.0, distmat)
         self.add_interacting_resis_(interacting_atoms, hbond_df, ['hbond'])
+
+    def add_delaunay_triangulation_(self):
+        """
+        Computes the Delaunay triangulation of the protein structure.
+
+        This has been used in prior work. References:
+        - Harrison, R. W., Yu, X. & Weber, I. T. Using triangulation to include
+          target structure improves drug resistance prediction accuracy. in 1–1
+          (IEEE, 2013). doi:10.1109/ICCABS.2013.6629236
+        - Yu, X., Weber, I. T. & Harrison, R. W. Prediction of HIV drug
+          resistance from genotype with encoded three-dimensional protein
+          structure. BMC Genomics 15 Suppl 5, S1 (2014).
+
+        Notes:
+        1. We do not use the add_interacting_resis function, because this
+           interaction is computed on the CA atoms. Therefore, there is code
+           duplication. For now, I have chosen to leave this code duplication
+           in.
+        """
+        ca_coords = self.dataframe[self.dataframe['atom'] == 'CA']
+
+        tri = Delaunay(ca_coords[['x', 'y', 'z']])  # this is the triangulation
+        for simplex in tri.simplices:
+            nodes = ca_coords.reset_index().ix[simplex]['node_id']
+
+            for n1, n2 in combinations(nodes, 2):
+                if self.has_edge(n1, n2):
+                    self.edge[n1][n2]['kind'].add('delaunay')
+                else:
+                    self.add_edge(n1, n2, kind={'delaunay'})
 
     def add_ionic_interactions_(self):
         """
@@ -580,41 +614,45 @@ class ProteinInteractionNetwork(nx.Graph):
         # Encode the amino acid as a one-of-K encoding.
         aa_lb = LabelBinarizer()
         aa_lb.fit(RESI_NAMES)
-        # following line is hack-ish; needed in order to get dimensions
-        # correct.
+        # following line is hack-ish; needed to do [0] in order to get
+        # dimensions correct.
         aa_enc = aa_lb.transform([aa])[0]
 
         # Encode the isoelectric point and mol weights of the amino acid.
-        pka = ISOELECTRIC_POINTS[aa]
-        mw = MOLECULAR_WEIGHTS[aa]
+        # These values are scaled between 0 and 1.
+        pka = [ISOELECTRIC_POINTS[aa]]
+
+        mw = [MOLECULAR_WEIGHTS[aa]]
 
         # Encode the degree of the node.
-        deg = self.degree(node)
+        deg = [self.degree(node)]
 
         # Encode the sum of euclidean distances on each edge connecting the
         # to the node.
         # Note: this is approximate, and only factors in the C-alpha distances
         # between the nodes, not the actual interaction distances.
-        eucl_dist = 0
+        sum_eucl_dist = 0
         for n2 in self.neighbors(node):
             dist = euclidean(self.node_coords(node), self.node_coords(n2))
-            eucl_dist += dist
+            sum_eucl_dist += dist
+        sum_eucl_dist = [sum_eucl_dist]
 
         # Encode the bond types that it is involved in
         bond_set = set()
         for n2 in self.neighbors(node):
             bond_set = bond_set.union(self.edge[node][n2]['kind'])
         bonds = self.encode_bond_features(bond_set)
+        bonds = [i for i in bonds]
         # Code block ends for encoding bond types.
 
         # Finally, make the feature vector.
-        # The single-value variables are enclosed in a list to enable
+        # The single-value variables are enclosed in a list (above) to enable
         # concatenation in a numpy array.
         self.node[node]['features'] = np.concatenate((aa_enc,
-                                                      [pka],
-                                                      [mw],
-                                                      [deg],
-                                                      [eucl_dist],
+                                                      pka,
+                                                      mw,
+                                                      deg,
+                                                      sum_eucl_dist,
                                                       bonds))
 
     def encode_bond_features(self, bond_set):
