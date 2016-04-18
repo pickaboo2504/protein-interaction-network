@@ -13,7 +13,7 @@ from itertools import combinations
 from scipy.spatial.distance import pdist, squareform, euclidean
 from scipy.spatial import Delaunay
 from sklearn.preprocessing import LabelBinarizer
-from resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
+from .resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
     HYDROPHOBIC_RESIS, DISULFIDE_RESIS, DISULFIDE_ATOMS, AA_RING_ATOMS,\
     IONIC_RESIS, POS_AA, NEG_AA, AROMATIC_RESIS, CATION_PI_RESIS,\
     CATION_RESIS, PI_RESIS, ISOELECTRIC_POINTS, MOLECULAR_WEIGHTS
