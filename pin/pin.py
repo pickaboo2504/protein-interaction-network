@@ -39,8 +39,21 @@ class ProteinInteractionNetwork(nx.Graph):
         self.rgroup_df = self.get_rgroup_dataframe_()
         # Automatically compute the interaction graph upon loading.
         self.compute_interaction_graph()
-        self.compute_all_node_features()
-        self.compute_all_edge_features()
+        # self.compute_all_node_features()
+        # self.compute_all_edge_features()
+        # Convert all metadata that are set datatypes to lists.
+        self.convert_all_sets_to_lists()
+
+    def convert_all_sets_to_lists(self):
+        for n, d in self.nodes(data=True):
+            for k, v in d.items():
+                if isinstance(v, set):
+                    self.node[n][k] = [i for i in v]
+
+        for u1, u2, d in self.edges(data=True):
+            for k, v in d.items():
+                if isinstance(v, set):
+                    self.edge[u1][u2][k] = [i for i in v]
 
     def compute_interaction_graph(self):
         """
