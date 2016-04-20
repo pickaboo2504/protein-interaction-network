@@ -373,7 +373,9 @@
 	],
 	"file_history":
 	[
+		"/Users/ericmjl/Documents/github/graph-fingerprint/experiments/nnet_arch.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/pin.py",
+		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/features.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/test_pin.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/resi_atoms.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/protein-interaction-network.sublime-project",
@@ -404,7 +406,6 @@
 		"/Users/ericmjl/Library/Application Support/Sublime Text 3/Packages/User/Preferences.sublime-settings",
 		"/Users/ericmjl/Library/Application Support/Sublime Text 3/Packages/Default/Preferences.sublime-settings",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/utils.py",
-		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/features.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/.git/hooks/pre-commit",
 		"/Volumes/ericmjl/computational_runs/20160309-hipath_h5-patristic_distances/HA_5.sh.e2357757",
 		"/Volumes/ericmjl/computational_runs/20160309-hipath_h5-patristic_distances/HA_master.sh.o2357751",
@@ -499,8 +500,7 @@
 		"/Users/ericmjl/Documents/github/reassortment-simulator/simulation.py",
 		"/Users/ericmjl/Documents/github/reassortment-simulator/simulation",
 		"/Users/ericmjl/Documents/github/chameleon/game/player.py",
-		"/Users/ericmjl/Documents/github/chameleon/game/deck.py",
-		"/Users/ericmjl/Documents/github/chameleon/game/pile.py"
+		"/Users/ericmjl/Documents/github/chameleon/game/deck.py"
 	],
 	"find":
 	{

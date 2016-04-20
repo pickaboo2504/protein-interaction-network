@@ -108,7 +108,7 @@ class ProteinInteractionNetwork(nx.Graph):
         funcs['aromatic'] = self.add_aromatic_interactions_
         funcs['aromatic_sulphur'] = self.add_aromatic_sulphur_interactions_
         funcs['cation_pi'] = self.add_cation_pi_interactions_
-        funcs['delaunay'] = self.add_delaunay_triangulation_
+        # funcs['delaunay'] = self.add_delaunay_triangulation_
 
         # Add in each type of edge, based on the above.
         for k, v in funcs.items():
