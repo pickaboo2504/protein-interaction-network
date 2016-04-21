@@ -374,6 +374,7 @@
 	"file_history":
 	[
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/pin.py",
+		"/Users/ericmjl/Documents/github/protein-convolutional-nets/.gitignore",
 		"/Users/ericmjl/Documents/github/graph-fingerprint/experiments/nnet_arch.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/features.py",
 		"/Users/ericmjl/Documents/github/protein-interaction-network/pin/test_pin.py",
@@ -499,8 +500,7 @@
 		"/Users/ericmjl/Documents/github/reassortment-simulator/simulation_python.py",
 		"/Users/ericmjl/Documents/github/reassortment-simulator/simulation.py",
 		"/Users/ericmjl/Documents/github/reassortment-simulator/simulation",
-		"/Users/ericmjl/Documents/github/chameleon/game/player.py",
-		"/Users/ericmjl/Documents/github/chameleon/game/deck.py"
+		"/Users/ericmjl/Documents/github/chameleon/game/player.py"
 	],
 	"find":
 	{
@@ -518,6 +518,8 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"compute_node_features",
+			"compute_all_node_features",
 			"delaunay",
 			"euclidean",
 			"features",
@@ -643,9 +645,7 @@
 			"_PB1",
 			"_PA",
 			"_NS",
-			"_NP",
-			"_NA",
-			"_MP"
+			"_NP"
 		],
 		"highlight": true,
 		"in_selection": false,

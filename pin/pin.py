@@ -39,8 +39,9 @@ class ProteinInteractionNetwork(nx.Graph):
         self.rgroup_df = self.get_rgroup_dataframe_()
         # Automatically compute the interaction graph upon loading.
         self.compute_interaction_graph()
-        # self.compute_all_node_features()
-        # self.compute_all_edge_features()
+        self.compute_all_node_features()
+        self.compute_all_edge_features()
+
         # Convert all metadata that are set datatypes to lists.
         self.convert_all_sets_to_lists()
 
@@ -644,6 +645,7 @@ class ProteinInteractionNetwork(nx.Graph):
         # to the node.
         # Note: this is approximate, and only factors in the C-alpha distances
         # between the nodes, not the actual interaction distances.
+        """For the time being, ignored. 21 April 2016"""
         sum_eucl_dist = 0
         for n2 in self.neighbors(node):
             dist = euclidean(self.node_coords(node), self.node_coords(n2))
@@ -666,7 +668,8 @@ class ProteinInteractionNetwork(nx.Graph):
                                                       mw,
                                                       deg,
                                                       sum_eucl_dist,
-                                                      bonds))
+                                                      bonds
+                                                      ))
 
     def encode_bond_features(self, bond_set):
         """
