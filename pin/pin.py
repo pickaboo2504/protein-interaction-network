@@ -663,13 +663,9 @@ class ProteinInteractionNetwork(nx.Graph):
         # Finally, make the feature vector.
         # The single-value variables are enclosed in a list (above) to enable
         # concatenation in a numpy array.
-        self.node[node]['features'] = np.concatenate((aa_enc,
-                                                      pka,
-                                                      mw,
-                                                      deg,
-                                                      sum_eucl_dist,
-                                                      bonds
-                                                      ))
+        features = np.concatenate((aa_enc, pka, mw, deg, sum_eucl_dist, bonds))
+        features = features.reshape(1, features.shape[0])
+        self.node[node]['features'] = features
 
     def encode_bond_features(self, bond_set):
         """
