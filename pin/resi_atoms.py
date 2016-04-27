@@ -5,6 +5,9 @@ Purpose: This is a set of utility variables and functions that can be used
 across the PIN project.
 """
 
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
 BACKBONE_ATOMS = ['N', 'CA', 'C', 'O']
 
 AMINO_ACIDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -72,6 +75,13 @@ ISOELECTRIC_POINTS = {
     'GLX': 4.35,  # the average of E and Q
 }
 
+scaler = StandardScaler()
+scaler.fit([v for v in ISOELECTRIC_POINTS.values()])
+
+ISOELECTRIC_POINTS_STD = dict()
+for k, v in ISOELECTRIC_POINTS.items():
+    ISOELECTRIC_POINTS_STD[k] = scaler.transform(np.array([v]).reshape(-1, 1))
+
 MOLECULAR_WEIGHTS = {
     'ALA': 89.0935,
     'ARG': 174.2017,
@@ -97,3 +107,10 @@ MOLECULAR_WEIGHTS = {
     'ASX': 132.6108,  # the average of D and N
     'GLX': 146.6375,  # the average of E and Q
 }
+
+MOLECULAR_WEIGHTS_STD = dict()
+
+scaler.fit([v for v in MOLECULAR_WEIGHTS.values()])
+MOLECULAR_WEIGHTS_STD = dict()
+for k, v in MOLECULAR_WEIGHTS.items():
+    MOLECULAR_WEIGHTS_STD[k] = scaler.transform(np.array([v]).reshape(-1, 1))
