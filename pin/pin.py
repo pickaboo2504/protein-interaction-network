@@ -16,7 +16,8 @@ from sklearn.preprocessing import LabelBinarizer
 from .resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
     HYDROPHOBIC_RESIS, DISULFIDE_RESIS, DISULFIDE_ATOMS, AA_RING_ATOMS,\
     IONIC_RESIS, POS_AA, NEG_AA, AROMATIC_RESIS, CATION_PI_RESIS,\
-    CATION_RESIS, PI_RESIS, ISOELECTRIC_POINTS, MOLECULAR_WEIGHTS
+    CATION_RESIS, PI_RESIS, ISOELECTRIC_POINTS, MOLECULAR_WEIGHTS,\
+    ISOELECTRIC_POINTS_STD, MOLECULAR_WEIGHTS_STD
 
 
 class ProteinInteractionNetwork(nx.Graph):
@@ -593,7 +594,7 @@ class ProteinInteractionNetwork(nx.Graph):
         for n in self.nodes():
             self.compute_node_features(n)
 
-    def compute_node_features(self, node):
+    def compute_node_features(self, node, debug=False):
         """
         A function that computes one node's features from the data.
 
@@ -634,9 +635,9 @@ class ProteinInteractionNetwork(nx.Graph):
 
         # Encode the isoelectric point and mol weights of the amino acid.
         # These values are scaled between 0 and 1.
-        pka = [ISOELECTRIC_POINTS[aa]]
+        pka = [ISOELECTRIC_POINTS_STD[aa]][0][0]
 
-        mw = [MOLECULAR_WEIGHTS[aa]]
+        mw = [MOLECULAR_WEIGHTS_STD[aa]][0][0]
 
         # Encode the degree of the node.
         deg = [self.degree(node)]
@@ -663,6 +664,13 @@ class ProteinInteractionNetwork(nx.Graph):
         # Finally, make the feature vector.
         # The single-value variables are enclosed in a list (above) to enable
         # concatenation in a numpy array.
+        if debug:
+            print('pka: {0}'.format(pka))
+            print('aa_enc: {0}'.format(aa_enc))
+            print('mw: {0}'.format(mw))
+            print('sum_eucl_dist: {0}'.format(sum_eucl_dist))
+            print('bonds: {0}'.format(bonds))
+
         features = np.concatenate((aa_enc, pka, mw, deg, sum_eucl_dist, bonds))
         features = features.reshape(1, features.shape[0])
         self.node[node]['features'] = features
