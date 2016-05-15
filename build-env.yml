@@ -1,6 +1,9 @@
 name: build
 dependencies:
 - pandas
+- networkx
+- scipy
+- scikit_learn
 - mkl
 - numpy
 - openssl
