@@ -1,11 +1,9 @@
 import pandas as pd
-import sys
 import os
 import pytest
 from .pin import ProteinInteractionNetwork
 from .resi_atoms import BOND_TYPES, AROMATIC_RESIS, SULPHUR_RESIS, POS_AA,\
     NEG_AA, CATION_RESIS, PI_RESIS
-from random import sample
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 pdb_handle = 'test_data/2VIU.pdb'
