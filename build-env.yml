@@ -1,5 +1,6 @@
 name: build
 dependencies:
+- pandas
 - mkl
 - numpy
 - openssl
