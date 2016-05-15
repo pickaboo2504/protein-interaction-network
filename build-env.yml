@@ -3,7 +3,7 @@ dependencies:
 - pandas
 - networkx
 - scipy
-- scikit_learn
+- scikit-learn
 - mkl
 - numpy
 - openssl
