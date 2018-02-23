@@ -10,6 +10,13 @@ I wrote this package as part of a larger effort to do graph convolutional neural
 
 One may be interested in the topology of proteins across species and over evolutionary time. This package can aid in answering this question.
 
+## how do I install this package?
+
+Currently only `pip`-installable:
+
+```bash
+$ pip install proteingraph
+```
 
 ## how do I use this package?
 
