@@ -15,7 +15,7 @@ def read(fname):
 
 setup(
     name="pin",
-    version="0.1",
+    version="0.1.1",
     author="Eric J. Ma",
     author_email="ericmajinglong@gmail.com",
     description=("A package for making graph representations of protein\
