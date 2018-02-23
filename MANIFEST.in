@@ -1,0 +1,4 @@
+include examples/*
+include LICENSE
+include requirements.txt
+include README.md
