@@ -14,7 +14,7 @@ def read(fname):
 
 
 setup(
-    name="pin",
+    name="proteingraph",
     version="0.1.1",
     author="Eric J. Ma",
     author_email="ericmajinglong@gmail.com",
