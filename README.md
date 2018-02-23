@@ -1,4 +1,4 @@
-# protein-interaction-network
+# protein-graph
 
 Computes a molecular graph for protein structures.
 
