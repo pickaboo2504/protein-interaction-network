@@ -13,3 +13,5 @@ dependencies:
 - numpy
 - scipy
 - scikit-learn
+- bumpversion
+- pytest
