@@ -23,7 +23,7 @@ structures."),
     license="MIT",
     keywords="protein, biochemistry, structural biology, graph theory",
     url="http://github.com/ericmjl/protein-interaction-network/",
-    # packages=['an_example_pypi_project', 'tests'],
+    packages=['proteingraph'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 3 - Alpha",
