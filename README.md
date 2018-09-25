@@ -25,9 +25,9 @@ This package assumes that you have a standard protein structure file (e.g. a PDB
 Once that has been generated, the molecular graph can be generated using Python code.
 
 ```python
-from pin import ProteinInteractionNetwork
+from proteingraph import ProteinInteractionNetwork
 
-p = pin.ProteinInteractionNetwork('my_model.pdb')
+p = ProteinInteractionNetwork('my_model.pdb')
 ```
 
 Because the `ProteinInteractionNetwork` class inherits from NetworkX's `Graph` class, all methods that `Graph` has are inherited by `ProteinInteractionNetwork`, and it behaves just as a NetworkX graph does.
