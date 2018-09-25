@@ -19,9 +19,9 @@ from .resi_atoms import BACKBONE_ATOMS, BOND_TYPES, RESI_NAMES,\
     CATION_RESIS, PI_RESIS, ISOELECTRIC_POINTS_STD, MOLECULAR_WEIGHTS_STD
 
 
-class ProteinInteractionNetwork(nx.Graph):
+class ProteinGraph(nx.Graph):
     """
-    The ProteinInteractionNetwork object.
+    The ProteinGraph object.
 
     Inherits from the NetworkX Graph object.
 
@@ -32,7 +32,7 @@ class ProteinInteractionNetwork(nx.Graph):
     neural-fingerprint Python package.
     """
     def __init__(self, pdb_handle):
-        super(ProteinInteractionNetwork, self).__init__()
+        super(ProteinGraph, self).__init__()
         self.pdb_handle = pdb_handle
         self.dataframe = self.parse_pdb()
         self.distmat = self.compute_distmat(self.dataframe)

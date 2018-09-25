@@ -1,14 +1,14 @@
 import pandas as pd
 import os
 import pytest
-from .pin import ProteinInteractionNetwork
+from .pin import ProteinGraph
 from .resi_atoms import BOND_TYPES, AROMATIC_RESIS, SULPHUR_RESIS, POS_AA,\
     NEG_AA, CATION_RESIS, PI_RESIS
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 pdb_handle = 'test_data/2VIU.pdb'
 data_path = os.path.join(file_path, pdb_handle)
-net = ProteinInteractionNetwork(data_path)
+net = ProteinGraph(data_path)
 
 
 def test_node_feature_array_length():
