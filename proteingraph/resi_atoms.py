@@ -76,7 +76,7 @@ ISOELECTRIC_POINTS = {
 }
 
 scaler = StandardScaler()
-scaler.fit([v for v in ISOELECTRIC_POINTS.values()])
+scaler.fit(np.array([v for v in ISOELECTRIC_POINTS.values()]).reshape(-1, 1))
 
 ISOELECTRIC_POINTS_STD = dict()
 for k, v in ISOELECTRIC_POINTS.items():
@@ -110,7 +110,7 @@ MOLECULAR_WEIGHTS = {
 
 MOLECULAR_WEIGHTS_STD = dict()
 
-scaler.fit([v for v in MOLECULAR_WEIGHTS.values()])
+scaler.fit(np.array([v for v in MOLECULAR_WEIGHTS.values()]).reshape(-1, 1))
 MOLECULAR_WEIGHTS_STD = dict()
 for k, v in MOLECULAR_WEIGHTS.items():
     MOLECULAR_WEIGHTS_STD[k] = scaler.transform(np.array([v]).reshape(-1, 1))
