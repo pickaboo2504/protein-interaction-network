@@ -2,11 +2,18 @@ import pandas as pd
 import os
 import pytest
 from .pin import ProteinGraph
-from .resi_atoms import BOND_TYPES, AROMATIC_RESIS, SULPHUR_RESIS, POS_AA,\
-    NEG_AA, CATION_RESIS, PI_RESIS
+from .resi_atoms import (
+    BOND_TYPES,
+    AROMATIC_RESIS,
+    SULPHUR_RESIS,
+    POS_AA,
+    NEG_AA,
+    CATION_RESIS,
+    PI_RESIS,
+)
 
 file_path = os.path.dirname(os.path.realpath(__file__))
-pdb_handle = 'test_data/2VIU.pdb'
+pdb_handle = "test_data/2VIU.pdb"
 data_path = os.path.join(file_path, pdb_handle)
 net = ProteinGraph(data_path)
 
@@ -21,7 +28,7 @@ def test_node_feature_array_length():
     For expediency, only check a random sample of 1/4 of the nodes.
     """
     for n, d in net.nodes(data=True):
-        assert d['features'].shape == (1, 36)
+        assert d["features"].shape == (1, 36)
 
 
 def test_bond_types_are_correct():
@@ -30,8 +37,8 @@ def test_bond_types_are_correct():
     """
     # Check that the bonds are correctly
     for u, v, d in net.edges(data=True):
-        assert isinstance(d['kind'], list)
-        for kind in d['kind']:
+        assert isinstance(d["kind"], list)
+        for kind in d["kind"]:
             assert kind in BOND_TYPES
 
 
@@ -54,19 +61,24 @@ def test_parse_pdb():
     assert len(net.dataframe) == 3892, "Error: Function or data has changed!"
 
     # Asserts that the following columns are all present.
-    column_types = {'Record name': str,
-                    'serial_number': int,
-                    'atom': str,
-                    'resi_name': str,
-                    'chain_id': str,
-                    'resi_num': int,
-                    'x': float,
-                    'y': float,
-                    'z': float,
-                    'node_id': str}
+    column_types = {
+        "Record name": str,
+        "serial_number": int,
+        "atom": str,
+        "resi_name": str,
+        "chain_id": str,
+        "resi_num": int,
+        "x": float,
+        "y": float,
+        "z": float,
+        "node_id": str,
+    }
     for c in column_types.keys():
-        assert c in net.dataframe.columns, \
-            "{0} not present in DataFrame columns!".format(c)
+        assert (
+            c in net.dataframe.columns
+        ), "{0} not present in DataFrame columns!".format(
+            c
+        )
 
 
 def test_compute_distmat():
@@ -76,10 +88,10 @@ def test_compute_distmat():
     data = list()
     for i in range(1, 2):
         d = dict()
-        d['idx'] = i
-        d['x'] = i
-        d['y'] = i
-        d['z'] = i
+        d["idx"] = i
+        d["x"] = i
+        d["y"] = i
+        d["z"] = i
         data.append(d)
     df = pd.DataFrame(data)
     distmat = net.compute_distmat(df)
@@ -109,23 +121,32 @@ def test_add_hydrophobic_interactions_():
     """
     Tests the function add_hydrophobic_interactions_, using 2VIU data.
     """
-    resis = net.get_edges_by_bond_type('hydrophobic')
-    HYDROPHOBIC_RESIS = ['ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE', 'TRP',
-                         'PRO', 'TYR']
+    resis = net.get_edges_by_bond_type("hydrophobic")
+    HYDROPHOBIC_RESIS = [
+        "ALA",
+        "VAL",
+        "LEU",
+        "ILE",
+        "MET",
+        "PHE",
+        "TRP",
+        "PRO",
+        "TYR",
+    ]
     for (r1, r2) in resis:
-        assert net.node[r1]['resi_name'] in HYDROPHOBIC_RESIS
-        assert net.node[r2]['resi_name'] in HYDROPHOBIC_RESIS
+        assert net.node[r1]["resi_name"] in HYDROPHOBIC_RESIS
+        assert net.node[r2]["resi_name"] in HYDROPHOBIC_RESIS
 
 
 def test_add_disulfide_interactions_():
     """
     Tests the function add_disulfide_interactions_, using 2VIU data.
     """
-    resis = net.get_edges_by_bond_type('disulfide')
+    resis = net.get_edges_by_bond_type("disulfide")
 
     for (r1, r2) in resis:
-        assert net.node[r1]['resi_name'] == 'CYS'
-        assert net.node[r2]['resi_name'] == 'CYS'
+        assert net.node[r1]["resi_name"] == "CYS"
+        assert net.node[r2]["resi_name"] == "CYS"
 
 
 def test_delaunay_triangulation():
@@ -159,10 +180,10 @@ def test_add_aromatic_interactions_():
     residues.
     """
 
-    resis = net.get_edges_by_bond_type('aromatic')
+    resis = net.get_edges_by_bond_type("aromatic")
     for n1, n2 in resis:
-        assert net.node[n1]['resi_name'] in AROMATIC_RESIS
-        assert net.node[n2]['resi_name'] in AROMATIC_RESIS
+        assert net.node[n1]["resi_name"] in AROMATIC_RESIS
+        assert net.node[n2]["resi_name"] in AROMATIC_RESIS
 
 
 def test_add_aromatic_sulphur_interactions_():
@@ -170,13 +191,17 @@ def test_add_aromatic_sulphur_interactions_():
     Tests the function add_aromatic_sulphur_interactions_, using 2VIU data.
     """
 
-    resis = net.get_edges_by_bond_type('aromatic_sulphur')
+    resis = net.get_edges_by_bond_type("aromatic_sulphur")
     for n1, n2 in resis:
-        condition1 = net.node[n1]['resi_name'] in SULPHUR_RESIS and\
-            net.node[n2]['resi_name'] in AROMATIC_RESIS
+        condition1 = (
+            net.node[n1]["resi_name"] in SULPHUR_RESIS
+            and net.node[n2]["resi_name"] in AROMATIC_RESIS
+        )
 
-        condition2 = net.node[n2]['resi_name'] in SULPHUR_RESIS and\
-            net.node[n1]['resi_name'] in AROMATIC_RESIS
+        condition2 = (
+            net.node[n2]["resi_name"] in SULPHUR_RESIS
+            and net.node[n1]["resi_name"] in AROMATIC_RESIS
+        )
 
         assert condition1 or condition2
 
@@ -186,10 +211,10 @@ def test_add_cation_pi_interactions_():
     Tests the function add_cation_pi_interactions_, using 2VIU data.
     """
 
-    resis = net.get_edges_by_bond_type('cation_pi')
+    resis = net.get_edges_by_bond_type("cation_pi")
     for n1, n2 in resis:
-        resi1 = net.node[n1]['resi_name']
-        resi2 = net.node[n2]['resi_name']
+        resi1 = net.node[n1]["resi_name"]
+        resi2 = net.node[n2]["resi_name"]
 
         condition1 = resi1 in CATION_RESIS and resi2 in PI_RESIS
         condition2 = resi2 in CATION_RESIS and resi1 in PI_RESIS
@@ -208,10 +233,10 @@ def test_add_ionic_interactions_():
     """
     Tests the function add_ionic_interactions_, using 2VIU data.
     """
-    resis = net.get_edges_by_bond_type('ionic')
+    resis = net.get_edges_by_bond_type("ionic")
     for n1, n2 in resis:
-        resi1 = net.node[n1]['resi_name']
-        resi2 = net.node[n2]['resi_name']
+        resi1 = net.node[n1]["resi_name"]
+        resi2 = net.node[n2]["resi_name"]
 
         condition1 = resi1 in POS_AA and resi2 in NEG_AA
         condition2 = resi2 in POS_AA and resi1 in NEG_AA
@@ -224,12 +249,12 @@ def test_feature_array():
     Tests the function feature_array.
     """
     with pytest.raises(AssertionError):
-        net.feature_array('atom')
+        net.feature_array("atom")
 
-    node_features = net.feature_array(kind='node')
+    node_features = net.feature_array(kind="node")
     assert len(node_features) == len(net.nodes())
 
-    edge_features = net.feature_array(kind='edge')
+    edge_features = net.feature_array(kind="edge")
     assert len(edge_features) == len(net.edges())
 
 

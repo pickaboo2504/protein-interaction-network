@@ -18,13 +18,15 @@ setup(
     version="0.1.2",
     author="Eric J. Ma",
     author_email="ericmajinglong@gmail.com",
-    description=("A package for making graph representations of protein\
-structures."),
+    description=(
+        "A package for making graph representations of protein\
+structures."
+    ),
     license="MIT",
     keywords="protein, biochemistry, structural biology, graph theory",
     url="http://github.com/ericmjl/protein-interaction-network/",
-    packages=['proteingraph'],
-    long_description=read('README.md'),
+    packages=["proteingraph"],
+    long_description=read("README.md"),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
