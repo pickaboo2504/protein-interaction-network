@@ -1,3 +1,5 @@
+NOTICE: This package is going to be deprecated in favour of a peer-reviewed package, [`get-contacts`](https://getcontacts.github.io/). Please use that package going forward.
+
 # protein-graph
 
 Computes a molecular graph for protein structures.
