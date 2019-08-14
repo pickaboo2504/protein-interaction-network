@@ -95,13 +95,13 @@ class ProteinGraph(nx.Graph):
         # - chain_id
         # - resi_num
         # - resi_name
-        for g, d in self.dataframe.groupby(
+        for g, d in self.dataframe.query("record_name == 'ATOM'").groupby(
             ["node_id", "chain_id", "resi_num", "resi_name"]
         ):
             node_id, chain_id, resi_num, resi_name = g
-            x = d[d["atom"] == "CA"]["x"].values[0]
-            y = d[d["atom"] == "CA"]["y"].values[0]
-            z = d[d["atom"] == "CA"]["z"].values[0]
+            x = d.query("atom == 'CA'")["x"].values[0]
+            y = d.query("atom == 'CA'")["y"].values[0]
+            z = d.query("atom == 'CA'")["z"].values[0]
             self.add_node(
                 node_id,
                 chain_id=chain_id,
@@ -155,9 +155,9 @@ class ProteinGraph(nx.Graph):
         with open(self.pdb_handle, "r") as f:
             for line in f.readlines():
                 data = dict()
-                if line[0:4] == "ATOM":
+                if line[0:7].strip(' ') in ["ATOM", "HETATM"]:
 
-                    data["Record name"] = line[0:5].strip(" ")
+                    data["record_name"] = line[0:7].strip(" ")
                     data["serial_number"] = int(line[6:11].strip(" "))
                     data["atom"] = line[12:15].strip(" ")
                     data["resi_name"] = line[17:20]
