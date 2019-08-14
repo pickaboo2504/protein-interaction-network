@@ -58,11 +58,11 @@ def test_parse_pdb():
     """
 
     # Asserts that the number of lines in the dataframe is correct.
-    assert len(net.dataframe) == 3892, "Error: Function or data has changed!"
+    assert len(net.dataframe) == 4104, "Error: Function or data has changed!"
 
     # Asserts that the following columns are all present.
     column_types = {
-        "Record name": str,
+        "record_name": str,
         "serial_number": int,
         "atom": str,
         "resi_name": str,
@@ -76,9 +76,7 @@ def test_parse_pdb():
     for c in column_types.keys():
         assert (
             c in net.dataframe.columns
-        ), "{0} not present in DataFrame columns!".format(
-            c
-        )
+        ), "{0} not present in DataFrame columns!".format(c)
 
 
 def test_compute_distmat():
@@ -114,7 +112,7 @@ def test_get_interacting_atoms_():
     """
     interacting = net.get_interacting_atoms_(6, net.distmat)
     # Asserts that the number of interactions found at 6A for 2VIU.
-    assert len(interacting[0]) == 156420
+    assert len(interacting[0]) == 165182
 
 
 def test_add_hydrophobic_interactions_():
