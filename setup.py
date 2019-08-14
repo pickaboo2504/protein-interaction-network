@@ -36,4 +36,5 @@ structures."
         "Programming Language :: Python :: 3",
     ],
     include_package_data=True,
+    long_description_content_type="text/markdown",
 )
