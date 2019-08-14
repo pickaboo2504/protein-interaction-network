@@ -69,7 +69,7 @@ class ProteinGraph(nx.Graph):
         for u1, u2, d in self.edges(data=True):
             for k, v in d.items():
                 if isinstance(v, set):
-                    self.edge[u1][u2][k] = [i for i in v]
+                    self.edges[u1, u2][k] = [i for i in v]
 
     def compute_interaction_graph(self):
         """
@@ -236,17 +236,17 @@ class ProteinGraph(nx.Graph):
         for k in kind:
             assert k in BOND_TYPES
 
-        resi1 = dataframe.ix[interacting_atoms[0]]["node_id"].values
-        resi2 = dataframe.ix[interacting_atoms[1]]["node_id"].values
+        resi1 = dataframe.loc[interacting_atoms[0]]["node_id"].values
+        resi2 = dataframe.loc[interacting_atoms[1]]["node_id"].values
 
         interacting_resis = set(list(zip(resi1, resi2)))
         for i1, i2 in interacting_resis:
             if i1 != i2:
                 if self.has_edge(i1, i2):
                     for k in kind:
-                        self.edge[i1][i2]["kind"].add(k)
+                        self.edges[i1, i2]["kind"].add(k)
                 else:
-                    self.add_edge(i1, i2, {"kind": set(kind)})
+                    self.add_edge(i1, i2, kind=set(kind))
 
         # return filtered_interacting_resis
 
@@ -370,11 +370,11 @@ class ProteinGraph(nx.Graph):
 
         tri = Delaunay(ca_coords[["x", "y", "z"]])  # this is the triangulation
         for simplex in tri.simplices:
-            nodes = ca_coords.reset_index().ix[simplex]["node_id"]
+            nodes = ca_coords.reset_index().loc[simplex, "node_id"]
 
             for n1, n2 in combinations(nodes, 2):
                 if self.has_edge(n1, n2):
-                    self.edge[n1][n2]["kind"].add("delaunay")
+                    self.edges[n1, n2]["kind"].add("delaunay")
                 else:
                     self.add_edge(n1, n2, kind={"delaunay"})
 
@@ -454,7 +454,7 @@ class ProteinGraph(nx.Graph):
             assert self.node[n1]["resi_name"] in AROMATIC_RESIS
             assert self.node[n2]["resi_name"] in AROMATIC_RESIS
             if self.has_edge(n1, n2):
-                self.edge[n1][n2]["kind"].add("aromatic")
+                self.edges[n1, n2]["kind"].add("aromatic")
             else:
                 self.add_edge(n1, n2, kind={"aromatic"})
 
@@ -530,17 +530,17 @@ class ProteinGraph(nx.Graph):
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
 
         for (a1, a2) in interacting_atoms:
-            resi1 = aromatic_sulphur_df.ix[a1]["node_id"]
-            resi2 = aromatic_sulphur_df.ix[a2]["node_id"]
+            resi1 = aromatic_sulphur_df.loc[a1, "node_id"]
+            resi2 = aromatic_sulphur_df.loc[a2, "node_id"]
 
             condition1 = resi1 in SULPHUR_RESIS and resi2 in AROMATIC_RESIS
             condition2 = resi1 in AROMATIC_RESIS and resi2 in SULPHUR_RESIS
 
             if (condition1 or condition2) and resi1 != resi2:
                 if self.has_edge(resi1, resi2):
-                    self.edge[resi1][resi2]["kind"].add("aromatic_sulphur")
+                    self.edges[resi1, resi2]["kind"].add("aromatic_sulphur")
                 else:
-                    self.add_edge(resi1, resi2, {"kind": {"aromatic_sulphur"}})
+                    self.add_edge(resi1, resi2, kind="aromatic_sulphur")
 
     def add_cation_pi_interactions_(self):
         cation_pi_df = self.filter_dataframe(
@@ -551,17 +551,17 @@ class ProteinGraph(nx.Graph):
         interacting_atoms = zip(interacting_atoms[0], interacting_atoms[1])
 
         for (a1, a2) in interacting_atoms:
-            resi1 = cation_pi_df.ix[a1]["node_id"]
-            resi2 = cation_pi_df.ix[a2]["node_id"]
+            resi1 = cation_pi_df.loc[a1, "node_id"]
+            resi2 = cation_pi_df.loc[a2, "node_id"]
 
             condition1 = resi1 in CATION_RESIS and resi2 in PI_RESIS
             condition2 = resi1 in PI_RESIS and resi2 in CATION_RESIS
 
             if (condition1 or condition2) and resi1 != resi2:
                 if self.has_edge(resi1, resi2):
-                    self.edge[resi1][resi2]["kind"].add("cation_pi")
+                    self.edges[resi1, resi2]["kind"].add("cation_pi")
                 else:
-                    self.add_edge(resi1, resi2, {"kind": {"cation_pi"}})
+                    self.add_edge(resi1, resi2, kind={"cation_pi"})
 
     def get_edges_by_bond_type(self, bond_type):
         """
@@ -603,9 +603,9 @@ class ProteinGraph(nx.Graph):
         # Defensive programming checks end.
 
         # Encode one-of-K for bond type.
-        bond_set = self.edge[u][v]["kind"]
+        bond_set = self.edges[u, v]["kind"]
         bond_features = self.encode_bond_features(bond_set)
-        self.edge[u][v]["features"] = np.concatenate((bond_features,))
+        self.edges[u, v]["features"] = np.concatenate((bond_features,))
 
     def compute_all_node_features(self):
         """
@@ -677,7 +677,7 @@ class ProteinGraph(nx.Graph):
         # Encode the bond types that it is involved in
         bond_set = set()
         for n2 in self.neighbors(node):
-            bond_set = bond_set.union(self.edge[node][n2]["kind"])
+            bond_set = bond_set.union(self.edges[node, n2]["kind"])
         bonds = self.encode_bond_features(bond_set)
         bonds = [i for i in bonds]
         # Code block ends for encoding bond types.
