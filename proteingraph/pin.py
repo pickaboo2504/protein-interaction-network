@@ -131,21 +131,19 @@ class ProteinGraph(nx.Graph):
         for n, d in self.nodes(data=True):
             chain = d["chain_id"]
             pos = d["resi_num"]
-            # aa = d["resi_name"]
+            aa = d["resi_name"]
 
-            try:
+            if pos - 1 in self.chain_pos_aa[chain].keys():
                 prev_aa = self.chain_pos_aa[chain][pos - 1]
                 prev_node = f"{chain}{pos-1}{prev_aa}"
-                self.add_edge(n, prev_node, kind={"backbone"})
-            except KeyError:
-                pass
+                if aa in RESI_NAMES and prev_aa in RESI_NAMES:
+                    self.add_edge(n, prev_node, kind={"backbone"})
 
-            try:
+            if pos + 1 in self.chain_pos_aa[chain].keys():
                 next_aa = self.chain_pos_aa[chain][pos + 1]
                 next_node = f"{chain}{pos+1}{next_aa}"
-                self.add_edge(n, next_node, kind={"backbone"})
-            except KeyError:
-                pass
+                if aa in RESI_NAMES and next_aa in RESI_NAMES:
+                    self.add_edge(n, next_node, kind={"backbone"})
 
             # prev_node = d["chain_id"] + str(d["resi_num"] - 1)
             # next_node = d["chain_id"] + str(d["resi_num"] + 1)
@@ -317,11 +315,9 @@ class ProteinGraph(nx.Graph):
         )
         distmat = self.compute_distmat(hydrophobics_df)
         interacting_atoms = self.get_interacting_atoms_(5, distmat)
-        interacting_resis = self.add_interacting_resis_(
+        self.add_interacting_resis_(
             interacting_atoms, hydrophobics_df, ["hydrophobic"]
         )
-
-        return interacting_resis
 
     def add_disulfide_interactions_(self):
         """
@@ -337,11 +333,9 @@ class ProteinGraph(nx.Graph):
         )
         distmat = self.compute_distmat(disulfide_df)
         interacting_atoms = self.get_interacting_atoms_(2.2, distmat)
-        interacting_resis = self.add_interacting_resis_(
+        self.add_interacting_resis_(
             interacting_atoms, disulfide_df, ["disulfide"]
         )
-
-        return interacting_resis
 
     def add_hydrogen_bond_interactions_(self):
         """
@@ -435,7 +429,9 @@ class ProteinGraph(nx.Graph):
             )
 
             if not condition1 or condition2:
-                self.remove_edge(r1, r2)
+                self.edges[r1, r2]["kind"].remove("ionic")
+                if len(self.edges[r1, r2]["kind"]) == 0:
+                    self.remove_edge(r1, r2)
 
     def add_aromatic_interactions_(self):
         """

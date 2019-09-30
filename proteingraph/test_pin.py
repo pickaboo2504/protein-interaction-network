@@ -11,6 +11,7 @@ from .resi_atoms import (
     NEG_AA,
     PI_RESIS,
     POS_AA,
+    RESI_NAMES,
     SULPHUR_RESIS,
 )
 
@@ -283,7 +284,20 @@ def test_feature_array():
 #     assert len(centroid_PHE) == 18
 
 
-@pytest.mark.parametrize()
+node_pairs = []
+for chain, pos_aa in net.chain_pos_aa.items():
+    for pos, aa in pos_aa.items():
+        try:
+            node1 = f"{chain}{pos}{aa}"
+            aa2 = pos_aa[pos + 1]
+            node2 = f"{chain}{pos+1}{aa2}"
+            if aa in RESI_NAMES and aa2 in RESI_NAMES:
+                node_pairs.append((node1, node2))
+        except KeyError:
+            pass
+
+
+@pytest.mark.parametrize("node_pair", node_pairs)
 def test_backbone_neighbor_connectivity(node_pair):
     """Test to ensure that backbone connectivity has been entered correctly."""
     node1, node2 = node_pair
