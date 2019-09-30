@@ -1,15 +1,17 @@
-import pandas as pd
 import os
+
+import pandas as pd
 import pytest
+
 from .pin import ProteinGraph
 from .resi_atoms import (
-    BOND_TYPES,
     AROMATIC_RESIS,
-    SULPHUR_RESIS,
-    POS_AA,
-    NEG_AA,
+    BOND_TYPES,
     CATION_RESIS,
+    NEG_AA,
     PI_RESIS,
+    POS_AA,
+    SULPHUR_RESIS,
 )
 
 file_path = os.path.dirname(os.path.realpath(__file__))
@@ -279,3 +281,13 @@ def test_feature_array():
 #     assert len(ring_atom_PHE) == 108
 #     centroid_PHE = net.get_ring_centroids_(ring_atom_PHE, 'PHE')
 #     assert len(centroid_PHE) == 18
+
+
+@pytest.mark.parametrize()
+def test_backbone_neighbor_connectivity(node_pair):
+    """Test to ensure that backbone connectivity has been entered correctly."""
+    node1, node2 = node_pair
+    # assert net.has_edge("A9SER", "A10THR")
+    assert net.has_edge(node1, node2)
+
+    # assert
