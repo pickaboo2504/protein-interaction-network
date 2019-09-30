@@ -8,3 +8,7 @@ upload:
 	twine upload dist/*
 
 release: clean build upload
+
+format:
+	isort -rc -y .
+	black -l 79 .
