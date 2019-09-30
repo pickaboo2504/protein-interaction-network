@@ -5,14 +5,15 @@ channels:
 - ericmjl
 dependencies:
 - python=3.6
-- jupyter
-- jupyterlab
-- networkx
-- pandas
-- pytest
-- numpy
-- scipy
-- scikit-learn
-- bumpversion
-- pytest
-- twine
+- black=19.3b0
+- bumpversion=0.5.3
+- jupyter=1.0.0
+- jupyterlab=1.1.4
+- networkx=2.3
+- numpy=1.17.2
+- pandas=0.25.1
+- pylint=2.4.2
+- pytest=5.2.0
+- scikit-learn=0.21.3
+- scipy=1.3.1
+- twine=2.0.0
