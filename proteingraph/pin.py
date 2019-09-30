@@ -5,31 +5,33 @@ License: MIT
 A Python module that computes the protein interaction graph from a PDB file.
 """
 
-import pandas as pd
-import numpy as np
-import networkx as nx
-
+from collections import defaultdict
 from itertools import combinations
-from scipy.spatial.distance import pdist, squareform, euclidean
+
+import networkx as nx
+import numpy as np
+import pandas as pd
 from scipy.spatial import Delaunay
+from scipy.spatial.distance import euclidean, pdist, squareform
 from sklearn.preprocessing import LabelBinarizer
+
 from .resi_atoms import (
+    AA_RING_ATOMS,
+    AROMATIC_RESIS,
     BACKBONE_ATOMS,
     BOND_TYPES,
-    RESI_NAMES,
-    HYDROPHOBIC_RESIS,
-    DISULFIDE_RESIS,
-    DISULFIDE_ATOMS,
-    AA_RING_ATOMS,
-    IONIC_RESIS,
-    POS_AA,
-    NEG_AA,
-    AROMATIC_RESIS,
     CATION_PI_RESIS,
     CATION_RESIS,
-    PI_RESIS,
+    DISULFIDE_ATOMS,
+    DISULFIDE_RESIS,
+    HYDROPHOBIC_RESIS,
+    IONIC_RESIS,
     ISOELECTRIC_POINTS_STD,
     MOLECULAR_WEIGHTS_STD,
+    NEG_AA,
+    PI_RESIS,
+    POS_AA,
+    RESI_NAMES,
 )
 
 
@@ -50,6 +52,9 @@ class ProteinGraph(nx.Graph):
         super(ProteinGraph, self).__init__()
         self.pdb_handle = pdb_handle
         self.dataframe = self.parse_pdb()
+        self.compute_chain_pos_aa_mapping()
+
+        # Mapping of chain -> position -> aa
         self.distmat = self.compute_distmat(self.dataframe)
         self.rgroup_df = self.get_rgroup_dataframe_()
         # Automatically compute the interaction graph upon loading.
@@ -59,6 +64,14 @@ class ProteinGraph(nx.Graph):
 
         # Convert all metadata that are set datatypes to lists.
         self.convert_all_sets_to_lists()
+
+    def compute_chain_pos_aa_mapping(self):
+        """Computes the mapping: chain -> position -> aa"""
+        self.chain_pos_aa = defaultdict(dict)
+        for (chain, pos, aa), d in self.dataframe.groupby(
+            ["chain_id", "resi_num", "resi_name"]
+        ):
+            self.chain_pos_aa[chain][pos] = aa
 
     def convert_all_sets_to_lists(self):
         for n, d in self.nodes(data=True):
@@ -116,18 +129,36 @@ class ProteinGraph(nx.Graph):
         # Add in edges for amino acids that are adjacent in the linear amino
         # acid sequence.
         for n, d in self.nodes(data=True):
-            prev_node = d["chain_id"] + str(d["resi_num"] - 1)
-            next_node = d["chain_id"] + str(d["resi_num"] + 1)
+            chain = d["chain_id"]
+            pos = d["resi_num"]
+            # aa = d["resi_name"]
+
+            try:
+                prev_aa = self.chain_pos_aa[chain][pos - 1]
+                prev_node = f"{chain}{pos-1}{prev_aa}"
+                self.add_edge(n, prev_node, kind={"backbone"})
+            except KeyError:
+                pass
+
+            try:
+                next_aa = self.chain_pos_aa[chain][pos + 1]
+                next_node = f"{chain}{pos+1}{next_aa}"
+                self.add_edge(n, next_node, kind={"backbone"})
+            except KeyError:
+                pass
+
+            # prev_node = d["chain_id"] + str(d["resi_num"] - 1)
+            # next_node = d["chain_id"] + str(d["resi_num"] + 1)
 
             # Find the previous node in the graph.
-            prev_node = [n for n in self.nodes() if prev_node in n]
-            next_node = [n for n in self.nodes() if next_node in n]
+            # prev_node = [n for n in self.nodes() if prev_node in n]
+            # next_node = [n for n in self.nodes() if next_node in n]
 
-            if len(prev_node) == 1:
-                self.add_edge(n, prev_node[0], kind={"backbone"})
+            # if len(prev_node) == 1:
+            # self.add_edge(n, prev_node[0], kind={"backbone"})
 
-            if len(next_node) == 1:
-                self.add_edge(n, next_node[0], kind={"backbone"})
+            # if len(next_node) == 1:
+            # self.add_edge(n, next_node[0], kind={"backbone"})
 
         # Define function shortcuts for each of the interactions.
         funcs = dict()
@@ -155,7 +186,7 @@ class ProteinGraph(nx.Graph):
         with open(self.pdb_handle, "r") as f:
             for line in f.readlines():
                 data = dict()
-                if line[0:7].strip(' ') in ["ATOM", "HETATM"]:
+                if line[0:7].strip(" ") in ["ATOM", "HETATM"]:
 
                     data["record_name"] = line[0:7].strip(" ")
                     data["serial_number"] = int(line[6:11].strip(" "))
@@ -540,7 +571,7 @@ class ProteinGraph(nx.Graph):
                 if self.has_edge(resi1, resi2):
                     self.edges[resi1, resi2]["kind"].add("aromatic_sulphur")
                 else:
-                    self.add_edge(resi1, resi2, kind="aromatic_sulphur")
+                    self.add_edge(resi1, resi2, kind={"aromatic_sulphur"})
 
     def add_cation_pi_interactions_(self):
         cation_pi_df = self.filter_dataframe(
