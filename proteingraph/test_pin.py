@@ -1,3 +1,4 @@
+"""Tests for pin.py"""
 import os
 
 import pandas as pd
@@ -14,15 +15,26 @@ from .resi_atoms import (
     RESI_NAMES,
     SULPHUR_RESIS,
 )
+from pyprojroot import here
+from pathlib import Path
 
-file_path = os.path.dirname(os.path.realpath(__file__))
-pdb_handle = "test_data/2VIU.pdb"
-data_path = os.path.join(file_path, pdb_handle)
-net = ProteinGraph(data_path)
+data_path = Path(__file__).parent / "test_data" / "2VIU.pdb"
 
 
-def test_node_feature_array_length():
+def generate_network():
+    return ProteinGraph(data_path)
+
+
+@pytest.fixture(scope="module")
+def net():
+    """Generate proteingraph from 2VUI.pdb."""
+    return generate_network()
+
+
+def test_node_feature_array_length(net):
     """
+    Test that node feature arrays are correct.
+
     Checks performed on the node features.
 
     1. Array length is equal to 36.
@@ -34,18 +46,16 @@ def test_node_feature_array_length():
         assert d["features"].shape == (1, 36)
 
 
-def test_bond_types_are_correct():
-    """
-    Checks that the bonds that are specified are correct.
-    """
+def test_bond_types_are_correct(net):
+    """Test that the bonds that are specified are correct."""
     # Check that the bonds are correctly
-    for u, v, d in net.edges(data=True):
+    for _, _, d in net.edges(data=True):
         assert isinstance(d["kind"], list)
         for kind in d["kind"]:
             assert kind in BOND_TYPES
 
 
-def test_nodes_are_strings():
+def test_nodes_are_strings(net):
     """
     Checks to make sure that the nodes are a string.
 
@@ -55,11 +65,8 @@ def test_nodes_are_strings():
         assert isinstance(n, str)
 
 
-def test_parse_pdb():
-    """
-    Tests the function parse_pdb
-    """
-
+def test_parse_pdb(net):
+    """Test the function parse_pdb."""
     # Asserts that the number of lines in the dataframe is correct.
     assert len(net.dataframe) == 4104, "Error: Function or data has changed!"
 
@@ -82,10 +89,8 @@ def test_parse_pdb():
         ), "{0} not present in DataFrame columns!".format(c)
 
 
-def test_compute_distmat():
-    """
-    Tests the function compute_distmat, using dummy data.
-    """
+def test_compute_distmat(net):
+    """Test the function compute_distmat, using dummy data."""
     data = list()
     for i in range(1, 2):
         d = dict()
@@ -101,27 +106,21 @@ def test_compute_distmat():
     assert distmat.shape == (len(data), len(data))
 
 
-def test_no_self_loops():
-    """
-    Assures that there are no self loops amongst residues.
-    """
+def test_no_self_loops(net):
+    """Test that there are no self loops amongst residues."""
     for n in net.nodes():
         assert not net.has_edge(n, n)
 
 
-def test_get_interacting_atoms_():
-    """
-    Tests the function get_interacting_atoms_, using 2VIU data.
-    """
+def test_get_interacting_atoms_(net):
+    """Test the function get_interacting_atoms_."""
     interacting = net.get_interacting_atoms_(6, net.distmat)
     # Asserts that the number of interactions found at 6A for 2VIU.
     assert len(interacting[0]) == 165182
 
 
-def test_add_hydrophobic_interactions_():
-    """
-    Tests the function add_hydrophobic_interactions_, using 2VIU data.
-    """
+def test_add_hydrophobic_interactions_(net):
+    """Test the function add_hydrophobic_interactions_."""
     resis = net.get_edges_by_bond_type("hydrophobic")
     HYDROPHOBIC_RESIS = [
         "ALA",
@@ -139,10 +138,8 @@ def test_add_hydrophobic_interactions_():
         assert net.nodes[r2]["resi_name"] in HYDROPHOBIC_RESIS
 
 
-def test_add_disulfide_interactions_():
-    """
-    Tests the function add_disulfide_interactions_, using 2VIU data.
-    """
+def test_add_disulfide_interactions_(net):
+    """Test the function add_disulfide_interactions_."""
     resis = net.get_edges_by_bond_type("disulfide")
 
     for (r1, r2) in resis:
@@ -150,8 +147,11 @@ def test_add_disulfide_interactions_():
         assert net.nodes[r2]["resi_name"] == "CYS"
 
 
-def test_delaunay_triangulation():
+@pytest.mark.skip(reason="Not yet implemented.")
+def test_delaunay_triangulation(net):
     """
+    Test delaunay triangulation.
+
     I am including this test here that always passes because I don't know how
     best to test it. The code in pin.py uses scipy's delaunay triangulation.
     """
@@ -163,34 +163,30 @@ def test_delaunay_triangulation():
 # for hydrogen bonding is. I intuitively don't think it should be merely 3.5A
 # between any two of N, O, S atoms, regardless of whether they are the same
 # element or not. Rather, it should be O:->N or N:-->O, or something like that.
-#
-def test_add_hydrogen_bond_interactions_():
-    """
-    Tests the function add_hydrogen_bond_interactions_, using 2VIU data.
-    """
+@pytest.mark.skip(reason="Not yet implemented.")
+def test_add_hydrogen_bond_interactions_(net):
+    """Tests the function add_hydrogen_bond_interactions_."""
     # net.add_hydrogen_bond_interactions_()
     # resis = net.get_edges_by_bond_type('hbond')
     # assert len(resis) == 86
     pass
 
 
-def test_add_aromatic_interactions_():
+def test_add_aromatic_interactions_(net):
     """
-    Tests the function add_aromatic_interactions_, using 2VIU data. The test
-    checks that each residue in an aromatic interaction is one of the aromatic
-    residues.
-    """
+    Tests the function add_aromatic_interactions_.
 
+    The test checks that each residue in an aromatic interaction
+    is one of the aromatic residues.
+    """
     resis = net.get_edges_by_bond_type("aromatic")
     for n1, n2 in resis:
         assert net.nodes[n1]["resi_name"] in AROMATIC_RESIS
         assert net.nodes[n2]["resi_name"] in AROMATIC_RESIS
 
 
-def test_add_aromatic_sulphur_interactions_():
-    """
-    Tests the function add_aromatic_sulphur_interactions_, using 2VIU data.
-    """
+def test_add_aromatic_sulphur_interactions_(net):
+    """Tests the function add_aromatic_sulphur_interactions_."""
 
     resis = net.get_edges_by_bond_type("aromatic_sulphur")
     for n1, n2 in resis:
@@ -207,10 +203,8 @@ def test_add_aromatic_sulphur_interactions_():
         assert condition1 or condition2
 
 
-def test_add_cation_pi_interactions_():
-    """
-    Tests the function add_cation_pi_interactions_, using 2VIU data.
-    """
+def test_add_cation_pi_interactions_(net):
+    """Tests the function add_cation_pi_interactions_."""
 
     resis = net.get_edges_by_bond_type("cation_pi")
     for n1, n2 in resis:
@@ -224,16 +218,12 @@ def test_add_cation_pi_interactions_():
 
 
 def test_atom_features():
-    """
-    Tests to make sure that the atom features are correct.
-    """
+    """Tests to make sure that the atom features are correct."""
     pass
 
 
-def test_add_ionic_interactions_():
-    """
-    Tests the function add_ionic_interactions_, using 2VIU data.
-    """
+def test_add_ionic_interactions_(net):
+    """Tests the function add_ionic_interactions_."""
     resis = net.get_edges_by_bond_type("ionic")
     for n1, n2 in resis:
         resi1 = net.nodes[n1]["resi_name"]
@@ -245,10 +235,8 @@ def test_add_ionic_interactions_():
         assert condition1 or condition2
 
 
-def test_feature_array():
-    """
-    Tests the function feature_array.
-    """
+def test_feature_array(net):
+    """Test the function feature_array."""
     with pytest.raises(AssertionError):
         net.feature_array("atom")
 
@@ -261,7 +249,7 @@ def test_feature_array():
 
 # def test_get_ring_atoms_():
 #     """
-#     Tests the function get_ring_atoms_, using 2VIU data.
+#     Tests the function get_ring_atoms_.
 #     """
 #     ring_atom_TRP = net.get_ring_atoms_(net.dataframe, 'TRP')
 #     assert len(ring_atom_TRP) == 63
@@ -271,7 +259,7 @@ def test_feature_array():
 
 # def test_get_ring_centroids():
 #     """
-#     Tests the function get_ring_centroids_, using 2VIU data.
+#     Tests the function get_ring_centroids_.
 #     """
 #     ring_atom_TYR = net.get_ring_atoms_(net.dataframe, 'TYR')
 #     assert len(ring_atom_TYR) == 96
@@ -285,7 +273,8 @@ def test_feature_array():
 
 
 node_pairs = []
-for chain, pos_aa in net.chain_pos_aa.items():
+network = generate_network()
+for chain, pos_aa in network.chain_pos_aa.items():
     for pos, aa in pos_aa.items():
         try:
             node1 = f"{chain}{pos}{aa}"
@@ -298,7 +287,7 @@ for chain, pos_aa in net.chain_pos_aa.items():
 
 
 @pytest.mark.parametrize("node_pair", node_pairs)
-def test_backbone_neighbor_connectivity(node_pair):
+def test_backbone_neighbor_connectivity(net, node_pair):
     """Test to ensure that backbone connectivity has been entered correctly."""
     node1, node2 = node_pair
     # assert net.has_edge("A9SER", "A10THR")
