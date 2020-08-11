@@ -135,8 +135,8 @@ def test_add_hydrophobic_interactions_():
         "TYR",
     ]
     for (r1, r2) in resis:
-        assert net.node[r1]["resi_name"] in HYDROPHOBIC_RESIS
-        assert net.node[r2]["resi_name"] in HYDROPHOBIC_RESIS
+        assert net.nodes[r1]["resi_name"] in HYDROPHOBIC_RESIS
+        assert net.nodes[r2]["resi_name"] in HYDROPHOBIC_RESIS
 
 
 def test_add_disulfide_interactions_():
@@ -146,8 +146,8 @@ def test_add_disulfide_interactions_():
     resis = net.get_edges_by_bond_type("disulfide")
 
     for (r1, r2) in resis:
-        assert net.node[r1]["resi_name"] == "CYS"
-        assert net.node[r2]["resi_name"] == "CYS"
+        assert net.nodes[r1]["resi_name"] == "CYS"
+        assert net.nodes[r2]["resi_name"] == "CYS"
 
 
 def test_delaunay_triangulation():
@@ -183,8 +183,8 @@ def test_add_aromatic_interactions_():
 
     resis = net.get_edges_by_bond_type("aromatic")
     for n1, n2 in resis:
-        assert net.node[n1]["resi_name"] in AROMATIC_RESIS
-        assert net.node[n2]["resi_name"] in AROMATIC_RESIS
+        assert net.nodes[n1]["resi_name"] in AROMATIC_RESIS
+        assert net.nodes[n2]["resi_name"] in AROMATIC_RESIS
 
 
 def test_add_aromatic_sulphur_interactions_():
@@ -195,13 +195,13 @@ def test_add_aromatic_sulphur_interactions_():
     resis = net.get_edges_by_bond_type("aromatic_sulphur")
     for n1, n2 in resis:
         condition1 = (
-            net.node[n1]["resi_name"] in SULPHUR_RESIS
-            and net.node[n2]["resi_name"] in AROMATIC_RESIS
+            net.nodes[n1]["resi_name"] in SULPHUR_RESIS
+            and net.nodes[n2]["resi_name"] in AROMATIC_RESIS
         )
 
         condition2 = (
-            net.node[n2]["resi_name"] in SULPHUR_RESIS
-            and net.node[n1]["resi_name"] in AROMATIC_RESIS
+            net.nodes[n2]["resi_name"] in SULPHUR_RESIS
+            and net.nodes[n1]["resi_name"] in AROMATIC_RESIS
         )
 
         assert condition1 or condition2
@@ -214,8 +214,8 @@ def test_add_cation_pi_interactions_():
 
     resis = net.get_edges_by_bond_type("cation_pi")
     for n1, n2 in resis:
-        resi1 = net.node[n1]["resi_name"]
-        resi2 = net.node[n2]["resi_name"]
+        resi1 = net.nodes[n1]["resi_name"]
+        resi2 = net.nodes[n2]["resi_name"]
 
         condition1 = resi1 in CATION_RESIS and resi2 in PI_RESIS
         condition2 = resi2 in CATION_RESIS and resi1 in PI_RESIS
@@ -236,8 +236,8 @@ def test_add_ionic_interactions_():
     """
     resis = net.get_edges_by_bond_type("ionic")
     for n1, n2 in resis:
-        resi1 = net.node[n1]["resi_name"]
-        resi2 = net.node[n2]["resi_name"]
+        resi1 = net.nodes[n1]["resi_name"]
+        resi2 = net.nodes[n2]["resi_name"]
 
         condition1 = resi1 in POS_AA and resi2 in NEG_AA
         condition2 = resi2 in POS_AA and resi1 in NEG_AA

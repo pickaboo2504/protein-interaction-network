@@ -14,6 +14,7 @@ import pandas as pd
 from scipy.spatial import Delaunay
 from scipy.spatial.distance import euclidean, pdist, squareform
 from sklearn.preprocessing import LabelBinarizer
+from pathlib import Path
 
 from .resi_atoms import (
     AA_RING_ATOMS,
@@ -48,7 +49,7 @@ class ProteinGraph(nx.Graph):
     neural-fingerprint Python package.
     """
 
-    def __init__(self, pdb_handle):
+    def __init__(self, pdb_handle: Path):
         super(ProteinGraph, self).__init__()
         self.pdb_handle = pdb_handle
         self.dataframe = self.parse_pdb()
@@ -74,15 +75,16 @@ class ProteinGraph(nx.Graph):
             self.chain_pos_aa[chain][pos] = aa
 
     def convert_all_sets_to_lists(self):
+        """Utility function to convert all node and edge attributes to lists."""
         for n, d in self.nodes(data=True):
             for k, v in d.items():
                 if isinstance(v, set):
-                    self.node[n][k] = [i for i in v]
+                    self.nodes[n][k] = list(v)
 
         for u1, u2, d in self.edges(data=True):
             for k, v in d.items():
                 if isinstance(v, set):
-                    self.edges[u1, u2][k] = [i for i in v]
+                    self.edges[u1, u2][k] = list(v)
 
     def compute_interaction_graph(self):
         """
@@ -145,19 +147,6 @@ class ProteinGraph(nx.Graph):
                 if aa in RESI_NAMES and next_aa in RESI_NAMES:
                     self.add_edge(n, next_node, kind={"backbone"})
 
-            # prev_node = d["chain_id"] + str(d["resi_num"] - 1)
-            # next_node = d["chain_id"] + str(d["resi_num"] + 1)
-
-            # Find the previous node in the graph.
-            # prev_node = [n for n in self.nodes() if prev_node in n]
-            # next_node = [n for n in self.nodes() if next_node in n]
-
-            # if len(prev_node) == 1:
-            # self.add_edge(n, prev_node[0], kind={"backbone"})
-
-            # if len(next_node) == 1:
-            # self.add_edge(n, next_node[0], kind={"backbone"})
-
         # Define function shortcuts for each of the interactions.
         funcs = dict()
         funcs["hydrophobic"] = self.add_hydrophobic_interactions_
@@ -167,7 +156,6 @@ class ProteinGraph(nx.Graph):
         funcs["aromatic"] = self.add_aromatic_interactions_
         funcs["aromatic_sulphur"] = self.add_aromatic_sulphur_interactions_
         funcs["cation_pi"] = self.add_cation_pi_interactions_
-        # funcs['delaunay'] = self.add_delaunay_triangulation_
 
         # Add in each type of edge, based on the above.
         for k, v in funcs.items():
@@ -237,8 +225,7 @@ class ProteinGraph(nx.Graph):
         Also filters out the list such that the residues have to be at least
         two apart.
 
-        Parameters:
-        ===========
+        ### Parameters
         - interacting_atoms:    (numpy array) result from
                                 get_interacting_atoms_ function.
         - dataframe:            (pandas dataframe) a pandas dataframe that
@@ -419,13 +406,13 @@ class ProteinGraph(nx.Graph):
         # Check that the interacting residues are of opposite charges
         for r1, r2 in self.get_edges_by_bond_type("ionic"):
             condition1 = (
-                self.node[r1]["resi_name"] in POS_AA
-                and self.node[r2]["resi_name"] in NEG_AA
+                self.nodes[r1]["resi_name"] in POS_AA
+                and self.nodes[r2]["resi_name"] in NEG_AA
             )
 
             condition2 = (
-                self.node[r2]["resi_name"] in POS_AA
-                and self.node[r1]["resi_name"] in NEG_AA
+                self.nodes[r2]["resi_name"] in POS_AA
+                and self.nodes[r1]["resi_name"] in NEG_AA
             )
 
             if not condition1 or condition2:
@@ -478,8 +465,8 @@ class ProteinGraph(nx.Graph):
             interacting_resis.append((distmat.index[r], distmat.index[c]))
 
         for i, (n1, n2) in enumerate(interacting_resis):
-            assert self.node[n1]["resi_name"] in AROMATIC_RESIS
-            assert self.node[n2]["resi_name"] in AROMATIC_RESIS
+            assert self.nodes[n1]["resi_name"] in AROMATIC_RESIS
+            assert self.nodes[n2]["resi_name"] in AROMATIC_RESIS
             if self.has_edge(n1, n2):
                 self.edges[n1, n2]["kind"].add("aromatic")
             else:
@@ -672,7 +659,7 @@ class ProteinGraph(nx.Graph):
         assert self.has_node(node)
 
         # Declare a convenience variable for accessing the amino acid name
-        aa = self.node[node]["resi_name"]
+        aa = self.nodes[node]["resi_name"]
 
         # Encode the amino acid as a one-of-K encoding.
         aa_lb = LabelBinarizer()
@@ -721,7 +708,7 @@ class ProteinGraph(nx.Graph):
 
         features = np.concatenate((aa_enc, pka, mw, deg, sum_eucl_dist, bonds))
         features = features.reshape(1, features.shape[0])
-        self.node[node]["features"] = features
+        self.nodes[node]["features"] = features
 
     def encode_bond_features(self, bond_set):
         """
@@ -748,9 +735,9 @@ class ProteinGraph(nx.Graph):
         """
         A helper function for getting the x, y, z coordinates of a node.
         """
-        x = self.node[n]["x"]
-        y = self.node[n]["y"]
-        z = self.node[n]["z"]
+        x = self.nodes[n]["x"]
+        y = self.nodes[n]["y"]
+        z = self.nodes[n]["z"]
 
         return x, y, z
 
