@@ -1,3 +1,5 @@
+.PHONY = build clean upload
+
 build:
 	python setup.py sdist bdist_wheel
 
