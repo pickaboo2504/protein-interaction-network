@@ -1,6 +1,7 @@
 # Added by Eric
 protein-interaction-network.sublime-workspace
 .vscode/*
+.mypy_cache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -65,3 +66,4 @@ target/
 #Ipython Notebook
 .ipynb_checkpoints
 default.profraw
+examples/hiv/hiv1_homology_model.pkl
